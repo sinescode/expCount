@@ -332,25 +332,76 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _confirmClear(BuildContext context, AppProvider p) {
+    final ctrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppTheme.card,
-        title: const Text('Clear All Data?',
-            style: TextStyle(color: AppTheme.textPrimary)),
-        content: const Text('This will permanently delete all transactions, debts, and reminders.',
-            style: TextStyle(color: AppTheme.textSecondary)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary))),
-          TextButton(
-            onPressed: () {
-              p.importJson('{"transactions":[],"debts":[],"reminders":[]}');
-              Navigator.pop(context);
-            },
-            child: const Text('Delete All', style: TextStyle(color: AppTheme.red)),
-          ),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          final canDelete = ctrl.text.trim() == 'DELETE';
+          return AlertDialog(
+            backgroundColor: AppTheme.card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(children: [
+              const Icon(Icons.warning_amber_rounded, color: AppTheme.red, size: 22),
+              const SizedBox(width: 8),
+              const Text('Clear All Data?',
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+            ]),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text(
+                'This permanently deletes ALL transactions, debts, and reminders. There is no undo.',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              const Text('Type  DELETE  to confirm:',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: ctrl,
+                style: const TextStyle(color: AppTheme.red,
+                    fontWeight: FontWeight.w700, letterSpacing: 2),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: 'DELETE',
+                  hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.4), letterSpacing: 2),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppTheme.red, width: 1.5),
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ]),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel',
+                    style: TextStyle(color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600)),
+              ),
+              TextButton(
+                onPressed: canDelete ? () {
+                  p.importJson('{"transactions":[],"debts":[],"reminders":[]}');
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('All data cleared.')));
+                } : null,
+                style: TextButton.styleFrom(
+                  backgroundColor:
+                      canDelete ? AppTheme.red.withOpacity(0.15) : Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text('Delete All',
+                    style: TextStyle(
+                        color: canDelete
+                            ? AppTheme.red
+                            : AppTheme.textSecondary.withOpacity(0.4),
+                        fontWeight: FontWeight.w700)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

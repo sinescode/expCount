@@ -192,7 +192,14 @@ class DashboardScreen extends StatelessWidget {
                         ])),
                         IconButton(
                           icon: const Icon(Icons.close, size: 14, color: AppTheme.textSecondary),
-                          onPressed: () => context.read<AppProvider>().deleteReminder(r.id),
+                          onPressed: () async {
+                            final ok = await confirmDelete(context,
+                                title: 'Remove reminder?',
+                                message: '"${r.title}" will be removed.');
+                            if (ok && context.mounted) {
+                              context.read<AppProvider>().deleteReminder(r.id);
+                            }
+                          },
                         ),
                       ]),
                     ),

@@ -227,7 +227,46 @@ class GradientButton extends StatelessWidget {
   );
 }
 
-// ── Transaction tile ──────────────────────────────────────────────────────────
+// ── Shared confirm-delete dialog ──────────────────────────────────────────────
+Future<bool> confirmDelete(
+  BuildContext context, {
+  String title = 'Delete this entry?',
+  String message = 'This cannot be undone.',
+}) async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: AppTheme.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(children: [
+        const Icon(Icons.warning_amber_rounded, color: AppTheme.red, size: 20),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+      ]),
+      content: Text(message,
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel',
+              style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(
+            backgroundColor: AppTheme.red.withOpacity(0.1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text('Delete',
+              style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.w700)),
+        ),
+      ],
+    ),
+  );
+  return result == true;
+}
+
+// ── Transaction tile  (swipe-left to reveal delete, tap delete → confirm) ─────
 class TransactionTile extends StatelessWidget {
   final Transaction transaction;
   final String currency;
@@ -243,7 +282,8 @@ class TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = transaction;
     final isIncome = t.type == TransactionType.income;
-    return GlassCard(
+
+    final card = GlassCard(
       onTap: onTap,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(children: [
@@ -253,8 +293,7 @@ class TransactionTile extends StatelessWidget {
             color: (isIncome ? AppTheme.green : AppTheme.accent).withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(t.category.icon,
-              size: 20,
+          child: Icon(t.category.icon, size: 20,
               color: isIncome ? AppTheme.green : AppTheme.accent),
         ),
         const SizedBox(width: 12),
@@ -279,25 +318,43 @@ class TransactionTile extends StatelessWidget {
                 ),
             ]),
             const SizedBox(height: 2),
-            Text(
-              '${t.category.label}  ·  ${DateFormat('MMM d, h:mm a').format(t.dateTime)}',
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-            ),
+            Text('${t.category.label}  ·  ${DateFormat('MMM d, h:mm a').format(t.dateTime)}',
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
             if (t.tag != null)
               Text('#${t.tag}',
                   style: const TextStyle(color: AppTheme.accentLight, fontSize: 10)),
           ]),
         ),
         const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          AmountText(amount: t.amount, currency: currency, fontSize: 14, isIncome: isIncome),
-          if (onDelete != null)
-            GestureDetector(
-              onTap: onDelete,
-              child: const Icon(Icons.delete_outline, size: 14, color: AppTheme.textSecondary),
-            ),
-        ]),
+        AmountText(amount: t.amount, currency: currency, fontSize: 14, isIncome: isIncome),
       ]),
+    );
+
+    if (onDelete == null) return card;
+
+    return Dismissible(
+      key: ValueKey(t.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => confirmDelete(context,
+          title: 'Delete transaction?',
+          message: '"${t.title}" will be permanently removed.'),
+      onDismissed: (_) => onDelete!(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppTheme.red.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.red.withOpacity(0.3)),
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.delete_outline, color: AppTheme.red, size: 22),
+          const SizedBox(height: 2),
+          const Text('Delete', style: TextStyle(color: AppTheme.red, fontSize: 10,
+              fontWeight: FontWeight.w600)),
+        ]),
+      ),
+      child: card,
     );
   }
 }

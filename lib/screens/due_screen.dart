@@ -88,7 +88,30 @@ class _DebtList extends StatelessWidget {
         final progress = d.totalAmount > 0 ? d.paidAmount / d.totalAmount : 0.0;
         final color = type == DebtType.theyOwe ? AppTheme.green : AppTheme.red;
 
-        return GlassCard(
+        return Dismissible(
+          key: ValueKey(d.id),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) => confirmDelete(ctx,
+              title: 'Delete debt?',
+              message: '"${d.personName}" debt of $currency${fmt.format(d.totalAmount)} will be removed.'),
+          onDismissed: (_) => p.deleteDebt(d.id),
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            margin: const EdgeInsets.only(bottom: 2),
+            decoration: BoxDecoration(
+              color: AppTheme.red.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.red.withOpacity(0.3)),
+            ),
+            child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.delete_outline, color: AppTheme.red, size: 22),
+              SizedBox(height: 2),
+              Text('Delete', style: TextStyle(color: AppTheme.red, fontSize: 10,
+                  fontWeight: FontWeight.w600)),
+            ]),
+          ),
+          child: GlassCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Container(
@@ -165,14 +188,10 @@ class _DebtList extends StatelessWidget {
                       style: TextStyle(color: AppTheme.green, fontSize: 11)),
                 ),
               ],
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 16, color: AppTheme.textSecondary),
-                onPressed: () => p.deleteDebt(d.id),
-                constraints: const BoxConstraints(), padding: EdgeInsets.zero,
-              ),
             ]),
           ]),
-        );
+        ), // GlassCard
+        ); // Dismissible
       },
     );
   }
