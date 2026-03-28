@@ -49,7 +49,7 @@ class VaultCrypto {
       final encrypted = enc.Encrypted.fromBase64(cipherB64);
       return _encrypter.decrypt(encrypted, iv: iv);
     } catch (_) {
-      return '🔒 [encrypted]';
+      return '[encrypted]';
     }
   }
 

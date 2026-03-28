@@ -10,7 +10,6 @@ import 'add_transaction.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
-
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -28,10 +27,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _index, children: _screens),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppTheme.surface,
@@ -68,41 +64,30 @@ class _MainShellState extends State<MainShell> {
           color: selected ? AppTheme.accent.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                color: selected ? AppTheme.accent : AppTheme.textSecondary,
-                size: 22),
-            const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    color: selected ? AppTheme.accent : AppTheme.textSecondary,
-                    fontSize: 10,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
-          ],
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon,
+              color: selected ? AppTheme.accent : AppTheme.textSecondary, size: 22),
+          const SizedBox(height: 2),
+          Text(label,
+              style: TextStyle(
+                  color: selected ? AppTheme.accent : AppTheme.textSecondary,
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
+        ]),
       ),
     );
   }
 
   Widget _fabButton() => GestureDetector(
-    onTap: () => Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
-    ),
+    onTap: () => Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const AddTransactionScreen())),
     child: Container(
-      width: 54,
-      height: 54,
+      width: 54, height: 54,
       decoration: BoxDecoration(
         gradient: AppTheme.accentGrad,
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(
-            color: AppTheme.accent.withOpacity(0.4),
-            blurRadius: 12,
-            spreadRadius: 2,
-          ),
+          BoxShadow(color: AppTheme.accent.withOpacity(0.4), blurRadius: 12, spreadRadius: 2),
         ],
       ),
       child: const Icon(Icons.add, color: Colors.white, size: 26),
