@@ -1,50 +1,135 @@
-name: Build APKs (ARM64 + ARMv7)
+name: Build APKs + Auto Release
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   build:
+    if: "!contains(github.event.head_commit.message, 'Auto bump')"
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout code
-    - uses: actions/checkout@v3
-    
+    # 1️⃣ Checkout
+    - name: Checkout
+      uses: actions/checkout@v3
+
     # 2️⃣ Setup Java
-    - uses: actions/setup-java@v3
+    - name: Setup Java
+      uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '17'
-    
-    # 3️⃣ Setup Flutter
-    - uses: subosito/flutter-action@v2
+
+    # 3️⃣ Cache Gradle
+    - name: Cache Gradle
+      uses: actions/cache@v3
       with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+    # 4️⃣ Cache Pub
+    - name: Cache Pub
+      uses: actions/cache@v3
+      with:
+        path: ~/.pub-cache
+        key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+
+    # 5️⃣ Setup Flutter (FIXED VERSION)
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.19.0'
         channel: 'stable'
-    
-    # 4️⃣ Get dependencies
+
+    # 6️⃣ Flutter Doctor
+    - name: Flutter Doctor
+      run: flutter doctor -v
+
+    # 7️⃣ Get dependencies
     - name: Get dependencies
       run: flutter pub get
-    
-    # 5️⃣ Build APKs for all ABIs (small separate APKs)
-    - name: Build APKs for all ABIs
-      run: flutter build apk --release --split-per-abi
 
-    # 6️⃣ Rename APKs
+    # 8️⃣ Auto bump version
+    - name: Bump version
+      id: version
+      run: |
+        VERSION_LINE=$(grep '^version:' pubspec.yaml)
+        VERSION_NAME=$(echo $VERSION_LINE | cut -d ' ' -f2 | cut -d '+' -f1)
+        BUILD_NUMBER=$(echo $VERSION_LINE | cut -d '+' -f2)
+
+        NEW_BUILD=$((BUILD_NUMBER + 1))
+        NEW_VERSION="$VERSION_NAME+$NEW_BUILD"
+
+        echo "New version: $NEW_VERSION"
+
+        sed -i "s/^version:.*/version: $NEW_VERSION/" pubspec.yaml
+
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+    # 9️⃣ Commit version bump
+    - name: Commit version bump
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
+        git add pubspec.yaml
+        git commit -m "Auto bump version to ${{ steps.version.outputs.version }}" || echo "No changes"
+        git push
+
+    # 🔟 Build APK (signed if secrets exist)
+    - name: Build APK
+      env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      run: |
+        if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+          echo "⚠️ Building unsigned APK (no signing secrets)"
+          flutter build apk --release --split-per-abi
+        else
+          echo "$KEYSTORE_BASE64" | base64 -di > android/app/release.keystore
+
+          echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
+          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
+          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+          echo "storeFile=release.keystore" >> android/key.properties
+
+          flutter build apk --release --split-per-abi
+
+          rm -f android/app/release.keystore
+          rm -f android/key.properties
+        fi
+
+    # 1️⃣1️⃣ Rename APKs safely
     - name: Rename APKs
       run: |
-        mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/ExpCount-arm64.apk
-        mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/ExpCount-armv7a.apk
+        ls build/app/outputs/flutter-apk/
 
-    # 7️⃣ Upload APKs
-    - name: Upload APKs
-      uses: actions/upload-artifact@v4
+        if [ -f build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
+          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/ExpCount-arm64.apk
+        fi
+
+        if [ -f build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ]; then
+          mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/ExpCount-armv7a.apk
+        fi
+
+    # 1️⃣2️⃣ Create GitHub Release + Upload APKs
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
       with:
-        name: release-apks
-        path: |
+        tag_name: v${{ steps.version.outputs.version }}
+        name: Release v${{ steps.version.outputs.version }}
+        body: |
+          🚀 Auto-generated release
+          
+          Version: ${{ steps.version.outputs.version }}
+          
+          ✅ ARM64 + ARMv7 APKs included
+        files: |
           build/app/outputs/flutter-apk/ExpCount-arm64.apk
-          build/app/outputs/flutter-apk/ExpCount-armv7a.apk 
-
+          build/app/outputs/flutter-apk/ExpCount-armv7a.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
