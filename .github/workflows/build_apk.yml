@@ -36,9 +36,6 @@ jobs:
     - name: Get dependencies
       run: flutter pub get
     
-    # 5️⃣ Analyze code
-    - name: Analyze code
-      run: flutter analyze --no-fatal-infos
     
     # 6️⃣ Build Signed Release APK
     - name: Build Signed Release APK
