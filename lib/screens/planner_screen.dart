@@ -338,13 +338,10 @@ class _ReminderCard extends StatelessWidget {
         else
           IconButton(
             icon: const Icon(Icons.close, size: 14, color: AppTheme.textSecondary),
-            onPressed: () async {
-              final ok = await confirmDelete(context,
-                  title: 'Remove reminder?',
-                  message: '"${reminder.title}" will be removed.');
-              if (ok && context.mounted) {
-                context.read<AppProvider>().deleteReminder(reminder.id);
-              }
+            onPressed: () {
+              final p = context.read<AppProvider>();
+              p.deleteReminder(reminder.id);
+              showUndoSnackbar(context, p, 'Removed "${reminder.title}"');
             },
             constraints: const BoxConstraints(), padding: EdgeInsets.zero,
           ),

@@ -144,12 +144,33 @@ class _LockScreen extends StatelessWidget {
   }
 }
 
-class _VaultContent extends StatelessWidget {
+class _VaultContent extends StatefulWidget {
   final AppProvider p;
   const _VaultContent({required this.p});
+  @override
+  State<_VaultContent> createState() => _VaultContentState();
+}
+
+class _VaultContentState extends State<_VaultContent> {
+  final Set<String> _selected = {};
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggleSelect(String id) => setState(() {
+    if (_selected.contains(id)) _selected.remove(id); else _selected.add(id);
+  });
+
+  void _deleteSelected() {
+    final count = _selected.length;
+    final ids = List<String>.from(_selected);
+    setState(() => _selected.clear());
+    widget.p.deleteTransactions(ids);
+    showUndoSnackbar(context, widget.p,
+        'Deleted $count hidden entr${count == 1 ? 'y' : 'ies'}');
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p = widget.p;
     final hidden = p.hiddenTransactions;
     final cur = p.settings.currency;
     final totalHidden = hidden.fold(0.0, (s, t) =>
@@ -161,35 +182,61 @@ class _VaultContent extends StatelessWidget {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          title: Row(children: [
-            const Icon(Icons.lock_outline, size: 18, color: AppTheme.accentLight),
-            const SizedBox(width: 8),
-            const Text('Secret Vault',
-                style: TextStyle(color: AppTheme.textPrimary)),
-          ]),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.lock_outlined, color: AppTheme.accentLight),
-              onPressed: () {
-                p.lockVault();
-                Navigator.pop(context);
-              },
-            ),
-          ],
+          title: _selecting
+              ? Text('${_selected.length} selected',
+                  style: const TextStyle(color: AppTheme.accent,
+                      fontWeight: FontWeight.w700))
+              : Row(children: [
+                  const Icon(Icons.lock_outline, size: 18,
+                      color: AppTheme.accentLight),
+                  const SizedBox(width: 8),
+                  const Text('Secret Vault',
+                      style: TextStyle(color: AppTheme.textPrimary)),
+                ]),
+          actions: _selecting
+              ? [
+                  TextButton(
+                    onPressed: () => setState(
+                        () => _selected.addAll(hidden.map((t) => t.id))),
+                    child: const Text('All',
+                        style: TextStyle(color: AppTheme.accent)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppTheme.red),
+                    onPressed: _deleteSelected,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close,
+                        color: AppTheme.textSecondary),
+                    onPressed: () => setState(() => _selected.clear()),
+                  ),
+                ]
+              : [
+                  IconButton(
+                    icon: const Icon(Icons.lock_outlined,
+                        color: AppTheme.accentLight),
+                    onPressed: () {
+                      p.lockVault();
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: AppTheme.accent,
-          onPressed: () => Navigator.push(context,
-              MaterialPageRoute(
-                  builder: (_) => const AddTransactionScreen(forceHidden: true))),
-          icon: const Icon(Icons.add),
-          label: const Text('Add Hidden'),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            // Vault balance
-            Container(
+        floatingActionButton: _selecting
+            ? null
+            : FloatingActionButton.extended(
+                backgroundColor: AppTheme.accent,
+                onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) =>
+                        const AddTransactionScreen(forceHidden: true))),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Hidden'),
+              ),
+        body: Column(children: [
+          // Vault balance header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -199,10 +246,12 @@ class _VaultContent extends StatelessWidget {
               ),
               child: Column(children: [
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.lock_outline, size: 14, color: AppTheme.textSecondary),
+                  const Icon(Icons.lock_outline, size: 14,
+                      color: AppTheme.textSecondary),
                   const SizedBox(width: 6),
                   const Text('Hidden Balance',
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                      style: TextStyle(color: AppTheme.textSecondary,
+                          fontSize: 13)),
                 ]),
                 const SizedBox(height: 6),
                 Text('$cur${totalHidden.abs().toStringAsFixed(2)}',
@@ -211,42 +260,70 @@ class _VaultContent extends StatelessWidget {
                         fontSize: 30, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.shield_outlined, size: 11, color: AppTheme.textSecondary),
+                  const Icon(Icons.shield_outlined, size: 11,
+                      color: AppTheme.textSecondary),
                   const SizedBox(width: 4),
                   Text('${hidden.length} encrypted entries',
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                      style: const TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 12)),
                 ]),
               ]),
             ),
-            const SizedBox(height: 20),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Hidden Entries',
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(children: [
+              const Text('Hidden Entries',
                   style: TextStyle(color: AppTheme.textPrimary,
                       fontSize: 16, fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: hidden.isEmpty
-                  ? const EmptyState(
-                      icon: Icons.visibility_off_outlined,
-                      message: 'No hidden entries',
-                      subtitle: 'Tap the button below to add a secret expense')
-                  : ListView.separated(
-                      itemCount: hidden.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (ctx, i) => TransactionTile(
-                        transaction: hidden[i],
-                        currency: cur,
-                        onTap: () => Navigator.push(ctx,
-                            MaterialPageRoute(
-                                builder: (_) => AddTransactionScreen(existing: hidden[i]))),
-                        onDelete: () => p.deleteTransaction(hidden[i].id),
-                      ),
+              const Spacer(),
+              if (!_selecting && hidden.isNotEmpty)
+                Text('Long-press to select',
+                    style: TextStyle(color: AppTheme.textSecondary.withOpacity(0.6),
+                        fontSize: 11)),
+            ]),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: hidden.isEmpty
+                ? const EmptyState(
+                    icon: Icons.visibility_off_outlined,
+                    message: 'No hidden entries',
+                    subtitle: 'Tap the button below to add a secret expense')
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    itemCount: hidden.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (ctx, i) => TransactionTile(
+                      transaction: hidden[i],
+                      currency: cur,
+                      selectable: _selecting,
+                      selected: _selected.contains(hidden[i].id),
+                      onSelect: () => _toggleSelect(hidden[i].id),
+                      onTap: _selecting
+                          ? () => _toggleSelect(hidden[i].id)
+                          : () => Navigator.push(ctx,
+                              MaterialPageRoute(builder: (_) =>
+                                  AddTransactionScreen(existing: hidden[i]))),
+                      onDelete: _selecting
+                          ? null
+                          : () {
+                              p.deleteTransaction(hidden[i].id);
+                              showUndoSnackbar(context, p,
+                                  'Deleted "${hidden[i].title}"');
+                            },
                     ),
-            ),
-          ]),
-        ),
+                  ),
+          ),
+        ]),
+        bottomNavigationBar: _selecting
+            ? BulkActionBar(
+                selectedCount: _selected.length,
+                onDelete: _deleteSelected,
+                onCancel: () => setState(() => _selected.clear()),
+              )
+            : null,
       ),
     );
   }

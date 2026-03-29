@@ -10,8 +10,38 @@ import 'add_transaction.dart';
 import 'vault_screen.dart';
 import 'due_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final Set<String> _selected = {};
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggleSelect(String id) {
+    setState(() {
+      if (_selected.contains(id)) _selected.remove(id);
+      else _selected.add(id);
+    });
+  }
+
+  void _cancelSelect() => setState(() => _selected.clear());
+
+  Future<void> _deleteSelected(AppProvider p) async {
+    if (_selected.isEmpty) return;
+    final count = _selected.length;
+    final ids = List<String>.from(_selected);
+    setState(() => _selected.clear());
+    p.deleteTransactions(ids);
+    showUndoSnackbar(context, p,
+        'Deleted $count transaction${count == 1 ? '' : 's'}');
+  }
+
+  void _selectAll(List<Transaction> list) {
+    setState(() => _selected.addAll(list.map((t) => t.id)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,82 +63,111 @@ class DashboardScreen extends StatelessWidget {
         backgroundColor: AppTheme.card,
         onRefresh: () async => p.load(),
         child: CustomScrollView(slivers: [
+          // App bar
           SliverAppBar(
             floating: true,
             backgroundColor: AppTheme.bg,
-            title: Row(children: [
-              const Icon(Icons.account_balance_wallet, color: AppTheme.accent, size: 22),
-              const SizedBox(width: 8),
-              const Text('ExpCount',
-                  style: TextStyle(color: AppTheme.textPrimary,
-                      fontSize: 20, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              SaveStatusIndicator(status: p.saveStatus),
-              const SizedBox(width: 4),
-              IconButton(
-                icon: const Icon(Icons.search_outlined, color: AppTheme.textSecondary),
-                onPressed: () => _showSearch(context, p),
-              ),
-            ]),
+            title: _selecting
+                ? Text('${_selected.length} selected',
+                    style: const TextStyle(color: AppTheme.accent,
+                        fontWeight: FontWeight.w700))
+                : Row(children: [
+                    const Icon(Icons.account_balance_wallet,
+                        color: AppTheme.accent, size: 22),
+                    const SizedBox(width: 8),
+                    const Text('ExpCount',
+                        style: TextStyle(color: AppTheme.textPrimary,
+                            fontSize: 20, fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    SaveStatusIndicator(status: p.saveStatus),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.search_outlined,
+                          color: AppTheme.textSecondary),
+                      onPressed: () => _showSearch(context, p),
+                    ),
+                  ]),
+            actions: _selecting
+                ? [
+                    TextButton(
+                      onPressed: () => _selectAll(p.publicTransactions),
+                      child: const Text('All',
+                          style: TextStyle(color: AppTheme.accent)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: AppTheme.red),
+                      onPressed: () => _deleteSelected(p),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppTheme.textSecondary),
+                      onPressed: _cancelSelect,
+                    ),
+                  ]
+                : null,
           ),
 
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, _selecting ? 80 : 100),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _BalanceCard(balance: p.totalBalance, todaySpent: p.todaySpent,
-                    monthSpent: p.monthSpent, currency: cur, fmt: fmt, settings: p.settings),
+                if (!_selecting) ...[
+                  _BalanceCard(balance: p.totalBalance, todaySpent: p.todaySpent,
+                      monthSpent: p.monthSpent, currency: cur,
+                      fmt: fmt, settings: p.settings),
+                  const SizedBox(height: 14),
+                  _QuickActions(),
+                  const SizedBox(height: 20),
 
-                const SizedBox(height: 14),
-                const _QuickActions(),
-                const SizedBox(height: 20),
-
-                // Due/Owe summary
-                if (p.debts.isNotEmpty) ...[
-                  SectionHeader(
-                    title: 'Due & Owe',
-                    trailing: TextButton(
-                      onPressed: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const DueScreen())),
-                      child: const Text('See all',
-                          style: TextStyle(color: AppTheme.accent, fontSize: 12)),
+                  // Due/Owe summary
+                  if (p.debts.isNotEmpty) ...[
+                    SectionHeader(
+                      title: 'Due & Owe',
+                      trailing: TextButton(
+                        onPressed: () => Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => const DueScreen())),
+                        child: const Text('See all',
+                            style: TextStyle(color: AppTheme.accent, fontSize: 12)),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    Expanded(
-                      child: GlassCard(
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(child: GlassCard(
                         gradient: const LinearGradient(
                             colors: [Color(0xFF0A2010), Color(0xFF0D1A0D)]),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                           Row(children: [
-                            const Icon(Icons.call_received, size: 13, color: AppTheme.green),
+                            const Icon(Icons.call_received_outlined, size: 13,
+                                color: AppTheme.green),
                             const SizedBox(width: 4),
                             const Text('You receive',
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                style: TextStyle(color: AppTheme.textSecondary,
+                                    fontSize: 11)),
                           ]),
                           const SizedBox(height: 4),
                           Text('$cur${fmt.format(p.totalOwed)}',
                               style: const TextStyle(color: AppTheme.green,
                                   fontSize: 18, fontWeight: FontWeight.w700)),
                         ]),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: GlassCard(
+                      )),
+                      const SizedBox(width: 10),
+                      Expanded(child: GlassCard(
                         gradient: const LinearGradient(
                             colors: [Color(0xFF2A0A10), Color(0xFF1A0D0D)]),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                           Row(children: [
-                            const Icon(Icons.call_made, size: 13, color: AppTheme.red),
+                            const Icon(Icons.call_made_outlined, size: 13,
+                                color: AppTheme.red),
                             const SizedBox(width: 4),
                             const Text('You owe',
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                style: TextStyle(color: AppTheme.textSecondary,
+                                    fontSize: 11)),
                             if (p.overdueDebts.isNotEmpty) ...[
                               const SizedBox(width: 4),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
                                 decoration: BoxDecoration(
                                     color: AppTheme.red.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(4)),
@@ -123,30 +182,48 @@ class DashboardScreen extends StatelessWidget {
                               style: const TextStyle(color: AppTheme.red,
                                   fontSize: 18, fontWeight: FontWeight.w700)),
                         ]),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 20),
+                      )),
+                    ]),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Weekly chart
+                  if (p.transactions.isNotEmpty) ...[
+                    const SectionHeader(title: 'This Week'),
+                    const SizedBox(height: 12),
+                    _WeekChart(data: p.last7DaysSpending),
+                    const SizedBox(height: 20),
+                  ],
                 ],
 
-                // Weekly chart
-                if (p.transactions.isNotEmpty) ...[
-                  const SectionHeader(title: 'This Week'),
-                  const SizedBox(height: 12),
-                  _WeekChart(data: p.last7DaysSpending, currency: cur),
-                  const SizedBox(height: 20),
-                ],
-
-                // Recent transactions
+                // Recent transactions header
                 SectionHeader(
-                  title: 'Recent',
-                  trailing: TextButton(
-                    onPressed: () {},
-                    child: const Text('All',
-                        style: TextStyle(color: AppTheme.accent, fontSize: 12)),
-                  ),
+                  title: _selecting ? 'Select transactions' : 'Recent',
+                  trailing: _selecting
+                      ? null
+                      : TextButton(
+                          onPressed: () {},
+                          child: const Text('All',
+                              style: TextStyle(color: AppTheme.accent,
+                                  fontSize: 12)),
+                        ),
                 ),
                 const SizedBox(height: 8),
+
+                // Hint for multi-select
+                if (!_selecting && p.publicTransactions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(children: [
+                      const Icon(Icons.touch_app_outlined, size: 12,
+                          color: AppTheme.textSecondary),
+                      const SizedBox(width: 4),
+                      const Text('Long-press to select multiple',
+                          style: TextStyle(color: AppTheme.textSecondary,
+                              fontSize: 11)),
+                    ]),
+                  ),
+
                 if (p.publicTransactions.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
@@ -155,50 +232,72 @@ class DashboardScreen extends StatelessWidget {
                         subtitle: 'Tap + to add your first entry'),
                   )
                 else
-                  ...p.publicTransactions.take(8).map((t) => Padding(
+                  ...p.publicTransactions.take(_selecting ? 100 : 8)
+                      .map((t) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: TransactionTile(
-                      transaction: t, currency: cur,
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => AddTransactionScreen(existing: t))),
-                      onDelete: () => context.read<AppProvider>().deleteTransaction(t.id),
+                      transaction: t,
+                      currency: cur,
+                      selectable: _selecting,
+                      selected: _selected.contains(t.id),
+                      onSelect: () {
+                        if (!_selecting && _selected.isEmpty) {
+                          setState(() => _selected.add(t.id));
+                        } else {
+                          _toggleSelect(t.id);
+                        }
+                      },
+                      onTap: _selecting
+                          ? () => _toggleSelect(t.id)
+                          : () => Navigator.push(context,
+                              MaterialPageRoute(builder: (_) =>
+                                  AddTransactionScreen(existing: t))),
+                      onDelete: _selecting ? null : () {
+                        p.deleteTransaction(t.id);
+                        showUndoSnackbar(context, p,
+                            'Deleted "${t.title}"');
+                      },
                     ),
                   )),
 
                 // Upcoming reminders
-                if (p.upcomingReminders.isNotEmpty) ...[
+                if (!_selecting && p.upcomingReminders.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   const SectionHeader(title: 'Reminders'),
                   const SizedBox(height: 8),
                   ...p.upcomingReminders.take(3).map((r) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: GlassCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       child: Row(children: [
                         Container(
                           width: 36, height: 36,
                           decoration: BoxDecoration(
                               color: AppTheme.yellow.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(10)),
-                          child: const Icon(Icons.alarm_outlined, size: 18, color: AppTheme.yellow),
+                          child: const Icon(Icons.alarm_outlined,
+                              size: 18, color: AppTheme.yellow),
                         ),
                         const SizedBox(width: 10),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                           Text(r.title,
-                              style: const TextStyle(color: AppTheme.textPrimary,
+                              style: const TextStyle(
+                                  color: AppTheme.textPrimary,
                                   fontSize: 13, fontWeight: FontWeight.w600)),
                           Text(DateFormat('MMM d, h:mm a').format(r.dateTime),
-                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                              style: const TextStyle(
+                                  color: AppTheme.textSecondary, fontSize: 11)),
                         ])),
                         IconButton(
-                          icon: const Icon(Icons.close, size: 14, color: AppTheme.textSecondary),
-                          onPressed: () async {
-                            final ok = await confirmDelete(context,
-                                title: 'Remove reminder?',
-                                message: '"${r.title}" will be removed.');
-                            if (ok && context.mounted) {
-                              context.read<AppProvider>().deleteReminder(r.id);
-                            }
+                          icon: const Icon(Icons.close, size: 14,
+                              color: AppTheme.textSecondary),
+                          onPressed: () {
+                            p.deleteReminder(r.id);
+                            showUndoSnackbar(context, p,
+                                'Removed "${r.title}"');
                           },
                         ),
                       ]),
@@ -210,6 +309,14 @@ class DashboardScreen extends StatelessWidget {
           ),
         ]),
       ),
+      // Bulk action bar
+      bottomNavigationBar: _selecting
+          ? BulkActionBar(
+              selectedCount: _selected.length,
+              onDelete: () => _deleteSelected(p),
+              onCancel: _cancelSelect,
+            )
+          : null,
     );
   }
 
@@ -225,6 +332,7 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
+// ── Balance card ──────────────────────────────────────────────────────────────
 class _BalanceCard extends StatelessWidget {
   final double balance, todaySpent, monthSpent;
   final String currency;
@@ -238,17 +346,19 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final budgetUsage = settings.monthlyBudget != null && settings.monthlyBudget! > 0
-        ? (monthSpent / settings.monthlyBudget!).clamp(0.0, 1.0)
-        : null;
+        ? (monthSpent / settings.monthlyBudget!).clamp(0.0, 1.0) : null;
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(gradient: AppTheme.accentGrad, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(gradient: AppTheme.accentGrad,
+          borderRadius: BorderRadius.circular(20)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.account_balance_wallet_outlined, color: Colors.white70, size: 14),
+          const Icon(Icons.account_balance_wallet_outlined,
+              color: Colors.white70, size: 14),
           const SizedBox(width: 6),
-          const Text('Total Balance', style: TextStyle(color: Colors.white70, fontSize: 13)),
+          const Text('Total Balance',
+              style: TextStyle(color: Colors.white70, fontSize: 13)),
         ]),
         const SizedBox(height: 4),
         Text('$currency${fmt.format(balance)}',
@@ -256,9 +366,11 @@ class _BalanceCard extends StatelessWidget {
                 fontWeight: FontWeight.w800, letterSpacing: -1)),
         const SizedBox(height: 16),
         Row(children: [
-          _stat(Icons.today_outlined, 'Today', '$currency${fmt.format(todaySpent)}', AppTheme.red),
+          _stat(Icons.today_outlined, 'Today',
+              '$currency${fmt.format(todaySpent)}', AppTheme.red),
           const SizedBox(width: 24),
-          _stat(Icons.calendar_month_outlined, 'Month', '$currency${fmt.format(monthSpent)}', AppTheme.orange),
+          _stat(Icons.calendar_month_outlined, 'Month',
+              '$currency${fmt.format(monthSpent)}', AppTheme.orange),
         ]),
         if (budgetUsage != null) ...[
           const SizedBox(height: 14),
@@ -267,7 +379,8 @@ class _BalanceCard extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 11)),
             Text('$currency${fmt.format(settings.monthlyBudget! - monthSpent)} left',
                 style: TextStyle(
-                    color: budgetUsage > 0.8 ? AppTheme.red : Colors.white70, fontSize: 11)),
+                    color: budgetUsage > 0.8 ? AppTheme.red : Colors.white70,
+                    fontSize: 11)),
           ]),
           const SizedBox(height: 6),
           ClipRRect(
@@ -275,7 +388,8 @@ class _BalanceCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: budgetUsage,
               backgroundColor: Colors.white24,
-              valueColor: AlwaysStoppedAnimation(budgetUsage > 0.8 ? AppTheme.red : Colors.white),
+              valueColor: AlwaysStoppedAnimation(
+                  budgetUsage > 0.8 ? AppTheme.red : Colors.white),
               minHeight: 5,
             ),
           ),
@@ -284,20 +398,20 @@ class _BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _stat(IconData icon, String label, String value, Color color) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(children: [
-        Icon(icon, size: 11, color: Colors.white54),
-        const SizedBox(width: 3),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-      ]),
-      const SizedBox(height: 2),
-      Text(value, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w700)),
-    ],
-  );
+  Widget _stat(IconData icon, String label, String value, Color color) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, size: 11, color: Colors.white54),
+          const SizedBox(width: 3),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        ]),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(color: color, fontSize: 14,
+            fontWeight: FontWeight.w700)),
+      ]);
 }
 
+// ── Quick actions ─────────────────────────────────────────────────────────────
 class _QuickActions extends StatelessWidget {
   const _QuickActions();
 
@@ -305,14 +419,19 @@ class _QuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final actions = [
       (Icons.arrow_upward_rounded, 'Expense', AppTheme.red,
-          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddTransactionScreen()))),
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const AddTransactionScreen()))),
       (Icons.arrow_downward_rounded, 'Income', AppTheme.green,
-          () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => const AddTransactionScreen(initialType: TransactionType.income)))),
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) =>
+                  const AddTransactionScreen(
+                      initialType: TransactionType.income)))),
       (Icons.lock_outline, 'Hidden', AppTheme.accentLight,
-          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VaultScreen()))),
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const VaultScreen()))),
       (Icons.handshake_outlined, 'Debt', AppTheme.orange,
-          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DueScreen()))),
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const DueScreen()))),
     ];
 
     return Row(
@@ -330,8 +449,8 @@ class _QuickActions extends StatelessWidget {
                 child: Icon(a.$1, size: 18, color: a.$3),
               ),
               const SizedBox(height: 6),
-              Text(a.$2, style: const TextStyle(
-                  color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.w500)),
+              Text(a.$2, style: const TextStyle(color: AppTheme.textSecondary,
+                  fontSize: 11, fontWeight: FontWeight.w500)),
             ]),
           ),
         ),
@@ -340,14 +459,15 @@ class _QuickActions extends StatelessWidget {
   }
 }
 
+// ── Week chart ────────────────────────────────────────────────────────────────
 class _WeekChart extends StatelessWidget {
   final List<MapEntry<DateTime, double>> data;
-  final String currency;
-  const _WeekChart({required this.data, required this.currency});
+  const _WeekChart({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final maxVal = data.map((e) => e.value).fold(0.0, (a, b) => a > b ? a : b);
+    final maxVal = data.map((e) => e.value)
+        .fold(0.0, (a, b) => a > b ? a : b);
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: SizedBox(
@@ -357,19 +477,25 @@ class _WeekChart extends StatelessWidget {
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (v, _) {
                   final idx = v.toInt();
-                  if (idx < 0 || idx >= data.length) return const SizedBox.shrink();
+                  if (idx < 0 || idx >= data.length) {
+                    return const SizedBox.shrink();
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(DateFormat('E').format(data[idx].key),
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+                        style: const TextStyle(
+                            color: AppTheme.textSecondary, fontSize: 10)),
                   );
                 },
               ),
@@ -382,9 +508,10 @@ class _WeekChart extends StatelessWidget {
               BarChartRodData(
                 toY: e.value.value,
                 gradient: isToday ? AppTheme.accentGrad
-                    : LinearGradient(
-                        colors: [AppTheme.accent.withOpacity(0.5), AppTheme.accent.withOpacity(0.25)],
-                        begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                    : LinearGradient(colors: [
+                        AppTheme.accent.withOpacity(0.5),
+                        AppTheme.accent.withOpacity(0.25),
+                      ], begin: Alignment.topCenter, end: Alignment.bottomCenter),
                 width: 22,
                 borderRadius: BorderRadius.circular(6),
               ),
@@ -396,6 +523,7 @@ class _WeekChart extends StatelessWidget {
   }
 }
 
+// ── Search sheet ──────────────────────────────────────────────────────────────
 class _SearchSheet extends StatefulWidget {
   final AppProvider provider;
   const _SearchSheet({required this.provider});
@@ -420,7 +548,8 @@ class _SearchSheetState extends State<_SearchSheet> {
             left: 16, right: 16, top: 16),
         child: Column(children: [
           Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
+              decoration: BoxDecoration(color: AppTheme.border,
+                  borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 12),
           TextField(
             controller: _ctrl, autofocus: true,
@@ -428,12 +557,14 @@ class _SearchSheetState extends State<_SearchSheet> {
             decoration: const InputDecoration(
                 hintText: 'Search transactions...',
                 prefixIcon: Icon(Icons.search_outlined, size: 18)),
-            onChanged: (q) => setState(() => _results = widget.provider.searchTransactions(q)),
+            onChanged: (q) => setState(
+                () => _results = widget.provider.searchTransactions(q)),
           ),
           const SizedBox(height: 12),
           Expanded(
             child: _results.isEmpty && _ctrl.text.isNotEmpty
-                ? const EmptyState(icon: Icons.search_off_outlined, message: 'No results found')
+                ? const EmptyState(icon: Icons.search_off_outlined,
+                    message: 'No results found')
                 : ListView.separated(
                     controller: scroll,
                     itemCount: _results.length,
