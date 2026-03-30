@@ -3,73 +3,75 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // ── Brand palette (same in both modes) ────────────────────────────────────
-  static const green       = Color(0xFF22C55E); // Emerald Green  – income / success
-  static const teal        = Color(0xFF0E7490); // Ocean Teal     – headers / nav / charts
-  static const tealLight   = Color(0xFF67C5D9); // Teal highlight
-  static const red         = Color(0xFFEF4444); // Alert Red      – expense / delete / warning
-  static const orange      = Color(0xFFF97316); // Warning orange – partial / overdue
-  static const yellow      = Color(0xFFEAB308); // Caution yellow – reminders
+  // ── Brand palette (REFINED) ──────────────────────────────────────────────
+  static const green       = Color(0xFF2D6A4F); // Forest Sage – income/success
+  static const teal        = Color(0xFF0F4C75); // Deep Ocean  – headers/nav
+  static const coral       = Color(0xFFE07A5F); // Terracotta  – accent/CTA
+  static const gold        = Color(0xFFE9C46A); // Pale Gold   – highlights
+  
+  static const red         = Color(0xFFEF4444);
+  static const orange      = Color(0xFFF97316);
+  static const yellow      = Color(0xFFEAB308);
 
-  // ── Light mode ─────────────────────────────────────────────────────────────
-  static const bgLight          = Color(0xFFF8FAFC); // Soft Slate
-  static const surfaceLight     = Color(0xFFFFFFFF); // Pure White
-  static const cardLight        = Color(0xFFFFFFFF); // Pure White cards
-  static const textPrimaryLight = Color(0xFF0F172A); // Deep Navy
-  static const textMutedLight   = Color(0xFF64748B); // Cool Gray
-  static const borderLight      = Color(0xFFE2E8F0); // Slate-200
+  // ── Light mode ───────────────────────────────────────────────────────────
+  static const bgLight          = Color(0xFFF8FAFC);
+  static const surfaceLight     = Color(0xFFFFFFFF);
+  static const cardLight        = Color(0xFFFFFFFF);
+  static const textPrimaryLight = Color(0xFF0F172A);
+  static const textMutedLight   = Color(0xFF64748B);
+  static const borderLight      = Color(0xFFE2E8F0);
 
-  // ── Dark mode ──────────────────────────────────────────────────────────────
-  static const bgDark          = Color(0xFF0F172A); // Deep Navy bg
-  static const surfaceDark     = Color(0xFF1E2937); // Dark surface
-  static const cardDark        = Color(0xFF1E2937); // Dark cards
-  static const textPrimaryDark = Color(0xFFF1F5F9); // Slate-100
-  static const textMutedDark   = Color(0xFF64748B); // Cool Gray (same)
-  static const borderDark      = Color(0xFF334155); // Slate-700
+  // ── Dark mode ────────────────────────────────────────────────────────────
+  static const bgDark          = Color(0xFF0B1220); // Deeper navy
+  static const surfaceDark     = Color(0xFF151E2E); // Richer dark
+  static const cardDark        = Color(0xFF1E2937);
+  static const textPrimaryDark = Color(0xFFF1F5F9);
+  static const textMutedDark   = Color(0xFF64748B);
+  static const borderDark      = Color(0xFF334155);
 
-  // ── Gradients (theme-independent) ─────────────────────────────────────────
+  // ── Gradients (FIXED - No more disgusting clashes) ─────────────────────
   static const primaryGrad = LinearGradient(
-    colors: [Color(0xFF0E7490), Color(0xFF22C55E)],
+    colors: [Color(0xFF0F4C75), Color(0xFF3D8BAA)], // Ocean → Azure
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const greenGrad = LinearGradient(
-    colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+    colors: [Color(0xFF2D6A4F), Color(0xFF40916C)], // Forest → Sage
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const tealGrad = LinearGradient(
-    colors: [Color(0xFF0E7490), Color(0xFF0369A1)],
+    colors: [Color(0xFF0F4C75), Color(0xFF1B6B93)], // Deep → Rich
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const vaultGradLight = LinearGradient(
-    colors: [Color(0xFF0E7490), Color(0xFF0F172A)],
+    colors: [Color(0xFF0F4C75), Color(0xFF1E2937)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const vaultGradDark = LinearGradient(
-    colors: [Color(0xFF0C1829), Color(0xFF0F172A)],
+    colors: [Color(0xFF0B1220), Color(0xFF1E2937)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // Back-compat alias used widely across all screens
+  // Back-compat aliases (unchanged references)
   static const accent      = teal;
-  static const accentLight = tealLight;
+  static const accentLight = coral; // Now coral instead of tealLight
   static const accentGrad  = tealGrad;
   static const vaultGrad   = vaultGradDark;
   static const cardGrad    = LinearGradient(
-    colors: [Color(0xFF1E2937), Color(0xFF1A2535)],
+    colors: [Color(0xFF1E2937), Color(0xFF162032)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // Defaults used by widgets (dark mode values kept as static const for compat)
+  // Defaults (unchanged)
   static const bg           = bgDark;
   static const surface      = surfaceDark;
   static const card         = cardDark;
@@ -77,7 +79,7 @@ class AppTheme {
   static const textSecondary = textMutedDark;
   static const border       = borderDark;
 
-  // ── ThemeData builders ─────────────────────────────────────────────────────
+  // ── ThemeData builders (UNCHANGED STRUCTURE) ────────────────────────────
   static ThemeData get dark => _build(
     brightness: Brightness.dark,
     bg: bgDark, surface: surfaceDark, cardColor: cardDark,
@@ -129,7 +131,7 @@ class AppTheme {
         onSurface: textPrimary,
         error: red,
         onError: Colors.white,
-        tertiary: orange,
+        tertiary: coral, // Now coral for CTAs
         onTertiary: Colors.white,
       ),
       textTheme: GoogleFonts.interTextTheme(
@@ -162,7 +164,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? const Color(0xFF253042) : const Color(0xFFF1F5F9),
+        fillColor: isDark ? const Color(0xFF1A2535) : const Color(0xFFF1F5F9),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: border)),
