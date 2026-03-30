@@ -132,7 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 8),
                     Row(children: [
                       Expanded(child: GlassCard(
-                        gradient: const LinearGradient(
+                        gradient: LinearGradient(
                             colors: [AppTheme.green.withOpacity(0.08), AppTheme.card]),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -152,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       )),
                       const SizedBox(width: 10),
                       Expanded(child: GlassCard(
-                        gradient: const LinearGradient(
+                        gradient: LinearGradient(
                             colors: [AppTheme.red.withOpacity(0.08), AppTheme.card]),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

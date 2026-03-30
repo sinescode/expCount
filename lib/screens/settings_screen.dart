@@ -138,7 +138,7 @@ class SettingsScreen extends StatelessWidget {
 
           // Security
           const SectionHeader(title: 'Security'),
-          const SizedBox(height: 10);
+          const SizedBox(height: 10),
 
           GlassCard(
             child: Column(children: [

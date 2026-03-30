@@ -154,7 +154,7 @@ class AppTheme {
             fontFamily: GoogleFonts.inter().fontFamily),
         systemOverlayStyle: systemOverlay,
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         labelColor: teal,
         unselectedLabelColor: textMuted,
         indicatorColor: teal,
@@ -200,7 +200,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         behavior: SnackBarBehavior.floating,
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
