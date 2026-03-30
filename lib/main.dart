@@ -8,17 +8,10 @@ import 'screens/main_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: AppTheme.surface,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  // Request storage permission so auto-save to /storage/emulated/0/expcount/ works
   if (await Permission.manageExternalStorage.isDenied) {
     await Permission.manageExternalStorage.request();
   }
@@ -38,10 +31,14 @@ class ExpCountApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.watch<AppProvider>();
+    final isDark = p.settings.darkMode;
     return MaterialApp(
       title: 'ExpCount',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
       home: const MainShell(),
     );
   }

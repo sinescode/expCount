@@ -213,6 +213,11 @@ class _VaultContentState extends State<_VaultContent> {
                 ]
               : [
                   IconButton(
+                    icon: const Icon(Icons.search_outlined,
+                        color: AppTheme.textSecondary),
+                    onPressed: () => _showVaultSearch(context, p, cur),
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.lock_outlined,
                         color: AppTheme.accentLight),
                     onPressed: () {
@@ -324,6 +329,186 @@ class _VaultContentState extends State<_VaultContent> {
                 onCancel: () => setState(() => _selected.clear()),
               )
             : null,
+      ),
+    );
+  }
+
+  void _showVaultSearch(BuildContext context, AppProvider p, String cur) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _VaultSearchSheet(provider: p, currency: cur),
+    );
+  }
+}
+
+// ── Vault search sheet ────────────────────────────────────────────────────────
+class _VaultSearchSheet extends StatefulWidget {
+  final AppProvider provider;
+  final String currency;
+  const _VaultSearchSheet({required this.provider, required this.currency});
+  @override
+  State<_VaultSearchSheet> createState() => _VaultSearchSheetState();
+}
+
+class _VaultSearchSheetState extends State<_VaultSearchSheet> {
+  List<Transaction> _results = [];
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      builder: (ctx, scroll) => Container(
+        decoration: const BoxDecoration(
+          gradient: AppTheme.vaultGrad,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 16, right: 16, top: 16),
+          child: Column(children: [
+            Container(width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: AppTheme.accentLight.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 12),
+            Row(children: [
+              const Icon(Icons.lock_outline, size: 14, color: AppTheme.accentLight),
+              const SizedBox(width: 6),
+              const Text('Search Secret Vault',
+                  style: TextStyle(color: AppTheme.textPrimary,
+                      fontSize: 15, fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _ctrl,
+              autofocus: true,
+              style: const TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Search hidden entries...',
+                prefixIcon: const Icon(Icons.search_outlined, size: 18),
+                suffixIcon: _ctrl.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close, size: 16,
+                            color: AppTheme.textSecondary),
+                        onPressed: () {
+                          _ctrl.clear();
+                          setState(() => _results = []);
+                        },
+                      )
+                    : null,
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                      color: AppTheme.accentLight.withOpacity(0.5), width: 1.5),
+                ),
+              ),
+              onChanged: (q) => setState(() {
+                _results = q.isEmpty
+                    ? []
+                    : widget.provider.searchHiddenTransactions(q);
+              }),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _ctrl.text.isEmpty
+                  ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.manage_search_outlined, size: 48,
+                          color: AppTheme.accentLight.withOpacity(0.3)),
+                      const SizedBox(height: 12),
+                      const Text('Type to search hidden entries',
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    ]))
+                  : _results.isEmpty
+                      ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.search_off_outlined, size: 48,
+                              color: AppTheme.textSecondary.withOpacity(0.35)),
+                          const SizedBox(height: 12),
+                          const Text('No hidden entries found',
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                        ]))
+                      : ListView.separated(
+                          controller: scroll,
+                          itemCount: _results.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (_, i) {
+                            final t = _results[i];
+                            final isIncome = t.type == TransactionType.income;
+                            return GlassCard(
+                              gradient: LinearGradient(colors: [
+                                AppTheme.accentLight.withOpacity(0.07),
+                                AppTheme.card,
+                              ]),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context,
+                                    MaterialPageRoute(builder: (_) =>
+                                        AddTransactionScreen(existing: t)));
+                              },
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              child: Row(children: [
+                                Container(
+                                  width: 38, height: 38,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.accentLight.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(Icons.lock_outline,
+                                      size: 16, color: AppTheme.accentLight),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                  Text(t.title,
+                                      style: const TextStyle(
+                                          color: AppTheme.textPrimary,
+                                          fontSize: 14, fontWeight: FontWeight.w600),
+                                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 2),
+                                  Row(children: [
+                                    Icon(t.category.icon, size: 10,
+                                        color: AppTheme.textSecondary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${t.category.label}  ·  '
+                                      '${t.dateTime.day}/${t.dateTime.month}/${t.dateTime.year}',
+                                      style: const TextStyle(
+                                          color: AppTheme.textSecondary, fontSize: 11),
+                                    ),
+                                  ]),
+                                  if (t.note != null)
+                                    Text(t.note!,
+                                        style: TextStyle(
+                                            color: AppTheme.textSecondary.withOpacity(0.7),
+                                            fontSize: 10),
+                                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ])),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${isIncome ? '+' : '-'}${widget.currency}'
+                                  '${t.amount.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                      color: isIncome ? AppTheme.green : AppTheme.red,
+                                      fontSize: 14, fontWeight: FontWeight.w700),
+                                ),
+                              ]),
+                            );
+                          },
+                        ),
+            ),
+          ]),
+        ),
       ),
     );
   }

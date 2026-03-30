@@ -59,7 +59,7 @@ class SettingsScreen extends StatelessWidget {
 
           // Auto-save path info
           GlassCard(
-            gradient: const LinearGradient(colors: [Color(0xFF0A2010), Color(0xFF0D1A0D)]),
+            gradient: LinearGradient(colors: [AppTheme.green.withOpacity(0.08), AppTheme.card]),
             child: Row(children: [
               const Icon(Icons.folder_outlined, color: AppTheme.green, size: 18),
               const SizedBox(width: 10),
@@ -86,39 +86,59 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 10),
 
           GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(children: [
-                const Icon(Icons.attach_money_outlined, color: AppTheme.accent, size: 18),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Currency', style: TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
-                    Text('Default: ৳ (Bangladeshi Taka)',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                  ]),
-                ),
-                DropdownButton<String>(
-                  value: s.currency,
-                  dropdownColor: AppTheme.card,
-                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
-                  underline: const SizedBox.shrink(),
-                  items: _currencies.map((c) => DropdownMenuItem(
-                    value: c, child: Text(c, style: const TextStyle(fontSize: 18)),
-                  )).toList(),
-                  onChanged: (v) {
-                    if (v != null) p.updateSettings(s.copyWith(currency: v));
-                  },
-                ),
-              ]),
-            ),
+            child: Column(children: [
+              // Dark mode toggle
+              SwitchListTile(
+                title: Row(children: [
+                  Icon(s.darkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                      size: 16,
+                      color: s.darkMode ? AppTheme.teal : AppTheme.yellow),
+                  const SizedBox(width: 8),
+                  const Text('Dark Mode'),
+                ]),
+                subtitle: Text(s.darkMode ? 'Dark theme active' : 'Light theme active'),
+                value: s.darkMode,
+                onChanged: (v) => p.updateSettings(s.copyWith(darkMode: v)),
+                contentPadding: EdgeInsets.zero,
+              ),
+              Divider(color: context.borderColor, height: 1),
+              // Currency
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(children: [
+                  Icon(Icons.attach_money_outlined, color: AppTheme.teal, size: 18),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text('Currency',
+                          style: TextStyle(color: context.textColor, fontSize: 14)),
+                      Text('Default: ৳ (Bangladeshi Taka)',
+                          style: TextStyle(color: context.mutedColor, fontSize: 11)),
+                    ]),
+                  ),
+                  DropdownButton<String>(
+                    value: s.currency,
+                    dropdownColor: context.cardColor,
+                    style: TextStyle(color: context.textColor, fontSize: 16),
+                    underline: const SizedBox.shrink(),
+                    items: _currencies.map((c) => DropdownMenuItem(
+                      value: c, child: Text(c, style: const TextStyle(fontSize: 18)),
+                    )).toList(),
+                    onChanged: (v) {
+                      if (v != null) p.updateSettings(s.copyWith(currency: v));
+                    },
+                  ),
+                ]),
+              ),
+            ]),
           ),
 
           const SizedBox(height: 24),
 
           // Security
           const SectionHeader(title: 'Security'),
-          const SizedBox(height: 10),
+          const SizedBox(height: 10);
 
           GlassCard(
             child: Column(children: [

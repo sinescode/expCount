@@ -133,7 +133,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Row(children: [
                       Expanded(child: GlassCard(
                         gradient: const LinearGradient(
-                            colors: [Color(0xFF0A2010), Color(0xFF0D1A0D)]),
+                            colors: [AppTheme.green.withOpacity(0.08), AppTheme.card]),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                           Row(children: [
@@ -153,7 +153,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(width: 10),
                       Expanded(child: GlassCard(
                         gradient: const LinearGradient(
-                            colors: [Color(0xFF2A0A10), Color(0xFF1A0D0D)]),
+                            colors: [AppTheme.red.withOpacity(0.08), AppTheme.card]),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                           Row(children: [
@@ -350,7 +350,7 @@ class _BalanceCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(gradient: AppTheme.accentGrad,
+      decoration: BoxDecoration(gradient: AppTheme.primaryGrad,
           borderRadius: BorderRadius.circular(20)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [

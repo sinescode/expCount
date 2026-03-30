@@ -4,14 +4,25 @@ import '../utils/theme.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
 
+// ── Theme helpers ─────────────────────────────────────────────────────────────
+extension ThemeX on BuildContext {
+  Color get bgColor      => Theme.of(this).scaffoldBackgroundColor;
+  Color get cardColor    => Theme.of(this).colorScheme.surface;
+  Color get textColor    => Theme.of(this).colorScheme.onSurface;
+  Color get mutedColor   => Theme.of(this).brightness == Brightness.dark
+      ? AppTheme.textMutedDark : AppTheme.textMutedLight;
+  Color get borderColor  => Theme.of(this).brightness == Brightness.dark
+      ? AppTheme.borderDark : AppTheme.borderLight;
+  bool  get isDark       => Theme.of(this).brightness == Brightness.dark;
+}
+
 // ── Undo snackbar ─────────────────────────────────────────────────────────────
-/// Call after any delete to show the 5-second undo snackbar.
 void showUndoSnackbar(BuildContext context, AppProvider provider, String label) {
   ScaffoldMessenger.of(context).clearSnackBars();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       duration: const Duration(seconds: 5),
-      backgroundColor: AppTheme.card,
+      backgroundColor: context.cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
       behavior: SnackBarBehavior.floating,
@@ -20,12 +31,12 @@ void showUndoSnackbar(BuildContext context, AppProvider provider, String label) 
         const SizedBox(width: 10),
         Expanded(
           child: Text(label,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+              style: TextStyle(color: context.textColor, fontSize: 13)),
         ),
       ]),
       action: SnackBarAction(
         label: 'UNDO',
-        textColor: AppTheme.accent,
+        textColor: AppTheme.teal,
         onPressed: () => provider.undo(),
       ),
     ),
@@ -40,29 +51,27 @@ Future<bool> confirmDelete(BuildContext context, {
   final result = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
-      backgroundColor: AppTheme.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(children: [
         const Icon(Icons.warning_amber_rounded, color: AppTheme.red, size: 20),
         const SizedBox(width: 8),
-        Text(title, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+        Text(title),
       ]),
-      content: Text(message,
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+      content: Text(message),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
+          child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
           style: TextButton.styleFrom(
             backgroundColor: AppTheme.red.withOpacity(0.1),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8)),
           ),
           child: const Text('Delete',
-              style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.w700)),
+              style: TextStyle(
+                  color: AppTheme.red, fontWeight: FontWeight.w700)),
         ),
       ],
     ),
@@ -87,26 +96,36 @@ class GlassCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    onLongPress: onLongPress,
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: padding ?? const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: gradient ?? AppTheme.cardGrad,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: selected ? AppTheme.accent : AppTheme.border,
-          width: selected ? 1.5 : 1,
+  Widget build(BuildContext context) {
+    final isDark = context.isDark;
+    final cardCol = context.cardColor;
+    final bord = context.borderColor;
+
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: padding ?? const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          color: gradient == null ? cardCol : null,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: selected ? AppTheme.teal : bord,
+            width: selected ? 1.5 : 1,
+          ),
+          boxShadow: selected
+              ? [BoxShadow(color: AppTheme.teal.withOpacity(0.2), blurRadius: 8)]
+              : isDark
+                  ? null
+                  : [BoxShadow(color: Colors.black.withOpacity(0.06),
+                        blurRadius: 8, offset: const Offset(0, 2))],
         ),
-        boxShadow: selected
-            ? [BoxShadow(color: AppTheme.accent.withOpacity(0.2), blurRadius: 8)]
-            : null,
+        child: child,
       ),
-      child: child,
-    ),
-  );
+    );
+  }
 }
 
 // ── Amount display ────────────────────────────────────────────────────────────
@@ -124,7 +143,8 @@ class AmountText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = neutral ? AppTheme.textPrimary
+    final color = neutral
+        ? context.textColor
         : (isIncome ? AppTheme.green : AppTheme.red);
     final sign = neutral ? '' : (isIncome ? '+' : '-');
     return Text(
@@ -145,32 +165,36 @@ class CategoryChip extends StatelessWidget {
       this.selected = false, this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: selected ? AppTheme.accent.withOpacity(0.2) : AppTheme.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: selected ? AppTheme.accent : AppTheme.border,
-          width: selected ? 1.5 : 1,
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.teal.withOpacity(0.15)
+              : context.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppTheme.teal : context.borderColor,
+            width: selected ? 1.5 : 1,
+          ),
         ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(category.icon, size: 14,
+              color: selected ? AppTheme.teal : context.mutedColor),
+          const SizedBox(width: 6),
+          Text(category.label,
+              style: TextStyle(
+                color: selected ? AppTheme.teal : context.mutedColor,
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              )),
+        ]),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(category.icon, size: 14,
-            color: selected ? AppTheme.accent : AppTheme.textSecondary),
-        const SizedBox(width: 6),
-        Text(category.label,
-            style: TextStyle(
-              color: selected ? AppTheme.accent : AppTheme.textSecondary,
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            )),
-      ]),
-    ),
-  );
+    );
+  }
 }
 
 // ── Save status indicator ─────────────────────────────────────────────────────
@@ -190,7 +214,7 @@ class SaveStatusIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -222,7 +246,7 @@ class DebtStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -243,8 +267,9 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(title, style: const TextStyle(color: AppTheme.textPrimary,
-          fontSize: 16, fontWeight: FontWeight.w700)),
+      Text(title,
+          style: TextStyle(color: context.textColor,
+              fontSize: 16, fontWeight: FontWeight.w700)),
       if (trailing != null) trailing!,
     ],
   );
@@ -261,14 +286,14 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 56, color: AppTheme.textSecondary.withOpacity(0.35)),
+      Icon(icon, size: 56, color: context.mutedColor.withOpacity(0.4)),
       const SizedBox(height: 12),
-      Text(message, style: const TextStyle(color: AppTheme.textSecondary,
+      Text(message, style: TextStyle(color: context.mutedColor,
           fontSize: 15, fontWeight: FontWeight.w500)),
       if (subtitle != null) ...[
         const SizedBox(height: 4),
         Text(subtitle!,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            style: TextStyle(color: context.mutedColor, fontSize: 12)),
       ],
     ]),
   );
@@ -290,8 +315,15 @@ class GradientButton extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        gradient: gradient ?? AppTheme.accentGrad,
+        gradient: gradient ?? AppTheme.tealGrad,
         borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.teal.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         if (icon != null) ...[
@@ -305,8 +337,7 @@ class GradientButton extends StatelessWidget {
   );
 }
 
-// ── Multi-select bulk delete bar ──────────────────────────────────────────────
-/// Place at the bottom of a screen when in multi-select mode.
+// ── Bulk action bar ───────────────────────────────────────────────────────────
 class BulkActionBar extends StatelessWidget {
   final int selectedCount;
   final VoidCallback onDelete;
@@ -324,40 +355,37 @@ class BulkActionBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: const Border(top: BorderSide(color: AppTheme.border)),
+        color: context.cardColor,
+        border: Border(top: BorderSide(color: context.borderColor)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12),
+          BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 12),
         ],
       ),
       child: SafeArea(
         top: false,
         child: Row(children: [
-          // Cancel
           IconButton(
             onPressed: onCancel,
-            icon: const Icon(Icons.close, color: AppTheme.textSecondary),
+            icon: Icon(Icons.close, color: context.mutedColor),
           ),
           const SizedBox(width: 8),
-          // Count badge
           Expanded(
-            child: Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.accent.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.accent.withOpacity(0.4)),
-                ),
-                child: Text(
-                  '$selectedCount selected',
-                  style: const TextStyle(color: AppTheme.accent,
-                      fontSize: 13, fontWeight: FontWeight.w600),
-                ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.teal.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.teal.withOpacity(0.3)),
               ),
-            ]),
+              child: Text(
+                '$selectedCount selected',
+                style: const TextStyle(color: AppTheme.teal,
+                    fontSize: 13, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
-          // Delete button
+          const SizedBox(width: 12),
           TextButton.icon(
             onPressed: selectedCount > 0 ? onDelete : null,
             icon: const Icon(Icons.delete_outline, color: AppTheme.red, size: 18),
@@ -377,7 +405,7 @@ class BulkActionBar extends StatelessWidget {
   }
 }
 
-// ── Transaction tile (swipe-to-delete + multi-select aware) ───────────────────
+// ── Transaction tile ──────────────────────────────────────────────────────────
 class TransactionTile extends StatelessWidget {
   final Transaction transaction;
   final String currency;
@@ -406,20 +434,20 @@ class TransactionTile extends StatelessWidget {
     final card = GlassCard(
       selected: selected,
       onTap: selectable ? onSelect : onTap,
-      onLongPress: selectable ? null : onSelect, // long-press enters select mode
+      onLongPress: selectable ? null : onSelect,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(children: [
-        // Checkbox (shown in select mode) or category icon
+        // Checkbox or icon
         if (selectable)
           AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: 24, height: 24,
             margin: const EdgeInsets.only(right: 10),
             decoration: BoxDecoration(
-              color: selected ? AppTheme.accent : Colors.transparent,
+              color: selected ? AppTheme.teal : Colors.transparent,
               shape: BoxShape.circle,
               border: Border.all(
-                  color: selected ? AppTheme.accent : AppTheme.textSecondary,
+                  color: selected ? AppTheme.teal : context.mutedColor,
                   width: 1.5),
             ),
             child: selected
@@ -431,18 +459,18 @@ class TransactionTile extends StatelessWidget {
             width: 42, height: 42,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: (isIncome ? AppTheme.green : AppTheme.accent).withOpacity(0.15),
+              color: (isIncome ? AppTheme.green : AppTheme.teal).withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(t.category.icon, size: 20,
-                color: isIncome ? AppTheme.green : AppTheme.accent),
+                color: isIncome ? AppTheme.green : AppTheme.teal),
           ),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(
                 child: Text(t.title,
-                    style: const TextStyle(color: AppTheme.textPrimary,
+                    style: TextStyle(color: context.textColor,
                         fontSize: 14, fontWeight: FontWeight.w600),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
@@ -451,19 +479,19 @@ class TransactionTile extends StatelessWidget {
                   margin: const EdgeInsets.only(left: 4),
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentLight.withOpacity(0.2),
+                    color: AppTheme.teal.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Icon(Icons.lock_outline, size: 10,
-                      color: AppTheme.accentLight),
+                      color: AppTheme.teal),
                 ),
             ]),
             const SizedBox(height: 2),
             Text('${t.category.label}  ·  ${DateFormat('MMM d, h:mm a').format(t.dateTime)}',
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                style: TextStyle(color: context.mutedColor, fontSize: 11)),
             if (t.tag != null)
               Text('#${t.tag}',
-                  style: const TextStyle(color: AppTheme.accentLight, fontSize: 10)),
+                  style: const TextStyle(color: AppTheme.teal, fontSize: 10)),
           ]),
         ),
         const SizedBox(width: 8),
@@ -477,21 +505,21 @@ class TransactionTile extends StatelessWidget {
     return Dismissible(
       key: ValueKey(t.id),
       direction: DismissDirection.endToStart,
-      confirmDismiss: (_) async => true, // undo replaces confirm dialog
+      confirmDismiss: (_) async => true,
       onDismissed: (_) => onDelete!(),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppTheme.red.withOpacity(0.15),
+          color: AppTheme.red.withOpacity(0.12),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.red.withOpacity(0.3)),
         ),
         child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.delete_outline, color: AppTheme.red, size: 22),
           SizedBox(height: 2),
-          Text('Delete', style: TextStyle(color: AppTheme.red, fontSize: 10,
-              fontWeight: FontWeight.w600)),
+          Text('Delete', style: TextStyle(color: AppTheme.red,
+              fontSize: 10, fontWeight: FontWeight.w600)),
         ]),
       ),
       child: card,

@@ -179,8 +179,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
           // Amount card
           GlassCard(
             gradient: isExpense
-                ? const LinearGradient(colors: [Color(0xFF2A1020), Color(0xFF1A1020)])
-                : const LinearGradient(colors: [Color(0xFF0A2A20), Color(0xFF0A1A18)]),
+                ? LinearGradient(colors: [
+                    AppTheme.red.withOpacity(0.12),
+                    AppTheme.card,
+                  ])
+                : LinearGradient(colors: [
+                    AppTheme.green.withOpacity(0.10),
+                    AppTheme.card,
+                  ]),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(isExpense ? 'Amount Spent' : 'Amount Received',
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),

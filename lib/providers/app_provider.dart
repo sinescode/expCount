@@ -352,9 +352,21 @@ class AppProvider extends ChangeNotifier {
     });
   }
 
+  /// Public-only search — hidden entries never appear here
   List<Transaction> searchTransactions(String query) {
     final q = query.toLowerCase();
-    return _transactions.where((t) =>
+    return publicTransactions.where((t) =>
+        t.title.toLowerCase().contains(q) ||
+        (t.note?.toLowerCase().contains(q) ?? false) ||
+        (t.tag?.toLowerCase().contains(q) ?? false) ||
+        t.category.label.toLowerCase().contains(q)).toList();
+  }
+
+  /// Vault-only search — only hidden entries, only when vault is unlocked
+  List<Transaction> searchHiddenTransactions(String query) {
+    if (!_vaultUnlocked) return [];
+    final q = query.toLowerCase();
+    return hiddenTransactions.where((t) =>
         t.title.toLowerCase().contains(q) ||
         (t.note?.toLowerCase().contains(q) ?? false) ||
         (t.tag?.toLowerCase().contains(q) ?? false) ||
