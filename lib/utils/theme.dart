@@ -3,19 +3,33 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // ── Brand palette (UPDATED - Modern, Vibrant & Professional) ──────────────────────────────────────────────
-  // Changed to fresh, clean, high-contrast colors that feel premium and work perfectly in both light/dark
-  // No major structural changes — just drop-in replacement like you do for your other apps
-  static const green       = Color(0xFF10B981); // Vibrant Emerald – income/success
-  static const teal        = Color(0xFF0EA5E9); // Fresh Sky Teal – headers/nav (modern & clean)
-  static const coral       = Color(0xFFEA580C); // Vivid Coral Orange – accent/CTA (high energy)
-  static const gold        = Color(0xFFFBBF24); // Warm Gold – highlights
-  
+  // ── BEST COLOR PALETTE (Based on your screenshot analysis) ──────────────────────────────────────────────
+  // Analysis of your current UI:
+  // ✅ Total Balance card = vibrant bright blue (perfect trust color)
+  // ✅ Income/You receive = green (good)
+  // ✅ Expense/You owe = red-orange tones (needs polish)
+  // ✅ Bottom nav + button & active Home = bright cyan-blue
+  // ❌ Due & Owe gradients = slightly harsh/stark (the "disgusting" part)
+  // ❌ Overall gradients had too much hue shift before
+  //
+  // SOLUTION: 
+  // • Teal = exact bright sky-blue to match your Total Balance + bottom nav perfectly
+  // • Green = fresh emerald for all positive elements
+  // • Coral = clean red for expense/owe (no more orange clash)
+  // • ALL GRADIENTS = ultra-smooth mono-hue (almost flat but with premium depth)
+  // • No more color clashes. Looks modern, premium & clean like top finance apps.
+  // • ZERO breaking changes — just replace the file. Your other code stays untouched.
+
+  static const green       = Color(0xFF10B981); // Fresh Emerald – income / receive
+  static const teal        = Color(0xFF06B6D4); // Bright Sky Blue – exactly matches your Total Balance card & bottom nav
+  static const coral       = Color(0xFFEF4444); // Clean Red – expense / owe / negative
+  static const gold        = Color(0xFFFBBF24); // Warm Gold – highlights (kept)
+
   static const red         = Color(0xFFEF4444);
   static const orange      = Color(0xFFF97316);
   static const yellow      = Color(0xFFEAB308);
 
-  // ── Light mode (kept unchanged — already perfect) ───────────────────────────────────────────────────────────
+  // ── Light mode (unchanged – already perfect) ───────────────────────────────────────────────────────────
   static const bgLight          = Color(0xFFF8FAFC);
   static const surfaceLight     = Color(0xFFFFFFFF);
   static const cardLight        = Color(0xFFFFFFFF);
@@ -23,7 +37,7 @@ class AppTheme {
   static const textMutedLight   = Color(0xFF64748B);
   static const borderLight      = Color(0xFFE2E8F0);
 
-  // ── Dark mode (kept unchanged — already perfect) ────────────────────────────────────────────────────────────
+  // ── Dark mode (unchanged – already perfect) ────────────────────────────────────────────────────────────
   static const bgDark          = Color(0xFF0B1220);
   static const surfaceDark     = Color(0xFF151E2E);
   static const cardDark        = Color(0xFF1E2937);
@@ -31,40 +45,45 @@ class AppTheme {
   static const textMutedDark   = Color(0xFF64748B);
   static const borderDark      = Color(0xFF334155);
 
-  // ── Gradients (UPDATED - Smooth mono-hue ONLY, no clashes, no "disgusting" look) ─────────────────────
-  // You said "No need gradient" and they were looking disgusting → fixed by using clean same-hue shades only.
-  // Gradients now feel premium and subtle (no more ocean-to-azure clashes). Structure kept 100% same.
+  // ── GRADIENTS (NOW PERFECT – ultra smooth, no disgusting clashes) ─────────────────────
+  // All gradients are now same-hue only with tiny brightness difference → premium & subtle
   static const primaryGrad = LinearGradient(
-    colors: [Color(0xFF0EA5E9), Color(0xFF38BDF8)], // Teal → Light Sky (smooth & fresh)
+    colors: [Color(0xFF06B6D4), Color(0xFF22D3EE)], // Bright Sky → Soft Cyan (matches your balance card perfectly)
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const greenGrad = LinearGradient(
-    colors: [Color(0xFF10B981), Color(0xFF34D399)], // Emerald → Light Emerald
+    colors: [Color(0xFF10B981), Color(0xFF34D399)], // Emerald → Light Emerald (smooth & fresh for "You receive")
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const tealGrad = LinearGradient(
-    colors: [Color(0xFF0EA5E9), Color(0xFF22D3EE)], // Teal → Light Cyan
+    colors: [Color(0xFF06B6D4), Color(0xFF22D3EE)], // Same as primary (consistent)
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const redGrad = LinearGradient(  // NEW – smooth red for "You owe"
+    colors: [Color(0xFFEF4444), Color(0xFFF87171)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const vaultGradLight = LinearGradient(
-    colors: [Color(0xFFF8FAFC), Color(0xFFFFFFFF)], // Pure light neutral (no color clash)
+    colors: [Color(0xFFF8FAFC), Color(0xFFFFFFFF)], // Pure neutral light
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const vaultGradDark = LinearGradient(
-    colors: [Color(0xFF0B1220), Color(0xFF151E2E)], // Pure dark neutral (no color clash)
+    colors: [Color(0xFF0B1220), Color(0xFF151E2E)], // Pure neutral dark
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // Back-compat aliases (UNCHANGED references — your other code will work instantly)
+  // Back-compat aliases (UNCHANGED – your other code works instantly)
   static const accent      = teal;
   static const accentLight = coral;
   static const accentGrad  = tealGrad;
@@ -83,7 +102,7 @@ class AppTheme {
   static const textSecondary = textMutedDark;
   static const border       = borderDark;
 
-  // ── ThemeData builders (UNCHANGED STRUCTURE — zero breaking changes) ────────────────────────────
+  // ── ThemeData builders (UNCHANGED STRUCTURE) ────────────────────────────
   static ThemeData get dark => _build(
     brightness: Brightness.dark,
     bg: bgDark, surface: surfaceDark, cardColor: cardDark,
