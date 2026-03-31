@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../providers/app_provider.dart';
 import '../utils/theme.dart';
 import '../widgets/widgets.dart';
+import '../widgets/filter_sheet.dart';
 import '../models/models.dart';
 import 'add_transaction.dart';
 import 'vault_screen.dart';
@@ -18,6 +19,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final Set<String> _selected = {};
+  TransactionFilter _filter = const TransactionFilter();
+
   bool get _selecting => _selected.isNotEmpty;
 
   void _toggleSelect(String id) {
@@ -41,6 +44,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _selectAll(List<Transaction> list) {
     setState(() => _selected.addAll(list.map((t) => t.id)));
+  }
+
+  Future<void> _openFilter(BuildContext context, AppProvider p) async {
+    final result = await showModalBottomSheet<TransactionFilter>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FilterSheet(current: _filter),
+    );
+    if (result != null) setState(() => _filter = result);
   }
 
   @override
@@ -81,6 +94,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const Spacer(),
                     SaveStatusIndicator(status: p.saveStatus),
                     const SizedBox(width: 4),
+                    FilterButton(
+                      filter: _filter,
+                      onTap: () => _openFilter(context, p),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.search_outlined,
                           color: AppTheme.textSecondary),
@@ -132,8 +149,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 8),
                     Row(children: [
                       Expanded(child: GlassCard(
-                        gradient: LinearGradient(
-                            colors: [AppTheme.green.withOpacity(0.08), AppTheme.card]),
+                        gradient: LinearGradient(colors: [
+                          AppTheme.incomeCardBg(context.isDark),
+                          AppTheme.incomeCardBg(context.isDark),
+                        ]),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                           Row(children: [
@@ -152,8 +171,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       )),
                       const SizedBox(width: 10),
                       Expanded(child: GlassCard(
-                        gradient: LinearGradient(
-                            colors: [AppTheme.red.withOpacity(0.08), AppTheme.card]),
+                        gradient: LinearGradient(colors: [
+                          AppTheme.expenseCardBg(context.isDark),
+                          AppTheme.expenseCardBg(context.isDark),
+                        ]),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                           Row(children: [
@@ -196,69 +217,139 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ],
 
-                // Recent transactions header
+                // Active filter bar
+                if (_filter.isActive && !_selecting)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: ActiveFilterBar(
+                      filter: _filter,
+                      onClear: () => setState(() => _filter = const TransactionFilter()),
+                    ),
+                  ),
+
+                // Filter summary card — shows totals for the filtered set
+                if (_filter.isActive && !_selecting)
+                  Builder(builder: (ctx) {
+                    final filtered = p.filterTransactions(
+                      date: _filter.date, from: _filter.from, to: _filter.to,
+                      category: _filter.category, type: _filter.type,
+                    );
+                    final totalExpense = filtered
+                        .where((t) => t.type == TransactionType.expense)
+                        .fold(0.0, (s, t) => s + t.amount);
+                    final totalIncome = filtered
+                        .where((t) => t.type == TransactionType.income)
+                        .fold(0.0, (s, t) => s + t.amount);
+                    final net = totalIncome - totalExpense;
+                    final count = filtered.length;
+                    if (count == 0) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _FilterSummaryCard(
+                        currency: cur,
+                        totalExpense: totalExpense,
+                        totalIncome: totalIncome,
+                        net: net,
+                        count: count,
+                      ),
+                    );
+                  }),
+
+                // Recent / filtered header
                 SectionHeader(
-                  title: _selecting ? 'Select transactions' : 'Recent',
+                  title: _selecting
+                      ? 'Select transactions'
+                      : _filter.isActive
+                          ? 'Filtered Results'
+                          : 'Recent',
                   trailing: _selecting
                       ? null
-                      : TextButton(
-                          onPressed: () {},
-                          child: const Text('All',
-                              style: TextStyle(color: AppTheme.accent,
-                                  fontSize: 12)),
-                        ),
+                      : _filter.isActive
+                          ? Text(
+                              '${p.filterTransactions(
+                                date: _filter.date, from: _filter.from, to: _filter.to,
+                                category: _filter.category, type: _filter.type,
+                              ).length} found',
+                              style: const TextStyle(
+                                  color: AppTheme.teal, fontSize: 12,
+                                  fontWeight: FontWeight.w500),
+                            )
+                          : TextButton(
+                              onPressed: () {},
+                              child: const Text('All',
+                                  style: TextStyle(color: AppTheme.teal, fontSize: 12)),
+                            ),
                 ),
                 const SizedBox(height: 8),
 
-                // Hint for multi-select
-                if (!_selecting && p.publicTransactions.isNotEmpty)
+                // Long-press hint (only when unfiltered, not selecting)
+                if (!_selecting && !_filter.isActive && p.publicTransactions.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(children: [
-                      const Icon(Icons.touch_app_outlined, size: 12,
-                          color: AppTheme.textSecondary),
+                      Icon(Icons.touch_app_outlined, size: 12,
+                          color: context.mutedColor),
                       const SizedBox(width: 4),
-                      const Text('Long-press to select multiple',
-                          style: TextStyle(color: AppTheme.textSecondary,
-                              fontSize: 11)),
+                      Text('Long-press to select multiple',
+                          style: TextStyle(color: context.mutedColor, fontSize: 11)),
                     ]),
                   ),
 
-                if (p.publicTransactions.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: EmptyState(icon: Icons.receipt_long_outlined,
-                        message: 'No transactions yet',
-                        subtitle: 'Tap + to add your first entry'),
-                  )
-                else
-                  ...p.publicTransactions.take(_selecting ? 100 : 8)
-                      .map((t) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: TransactionTile(
-                      transaction: t,
-                      currency: cur,
-                      selectable: _selecting,
-                      selected: _selected.contains(t.id),
-                      onSelect: () {
-                        if (!_selecting && _selected.isEmpty) {
-                          setState(() => _selected.add(t.id));
-                        } else {
-                          _toggleSelect(t.id);
-                        }
-                      },
-                      onTap: _selecting
-                          ? () => _toggleSelect(t.id)
-                          : () => Navigator.push(context,
-                              MaterialPageRoute(builder: (_) =>
-                                  AddTransactionScreen(existing: t))),
-                      onDelete: _selecting ? null : () {
-                        p.deleteTransaction(t.id);
-                        showUndoSnackbar(context, p,
-                            'Deleted "${t.title}"');
-                      },
-                    ),
-                  )),
+                // Transaction list (filtered or recent)
+                Builder(builder: (ctx) {
+                  final filtered = _filter.isActive
+                      ? p.filterTransactions(
+                          date: _filter.date, from: _filter.from, to: _filter.to,
+                          category: _filter.category, type: _filter.type,
+                        )
+                      : p.publicTransactions;
+
+                  if (filtered.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: EmptyState(
+                        icon: _filter.isActive
+                            ? Icons.filter_alt_off_outlined
+                            : Icons.receipt_long_outlined,
+                        message: _filter.isActive
+                            ? 'No results for this filter'
+                            : 'No transactions yet',
+                        subtitle: _filter.isActive
+                            ? 'Try a different date or category'
+                            : 'Tap + to add your first entry',
+                      ),
+                    );
+                  }
+
+                  final show = _selecting ? filtered : filtered.take(50).toList();
+                  return Column(
+                    children: show.map((t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TransactionTile(
+                        transaction: t,
+                        currency: cur,
+                        selectable: _selecting,
+                        selected: _selected.contains(t.id),
+                        onSelect: () {
+                          if (!_selecting && _selected.isEmpty) {
+                            setState(() => _selected.add(t.id));
+                          } else {
+                            _toggleSelect(t.id);
+                          }
+                        },
+                        onTap: _selecting
+                            ? () => _toggleSelect(t.id)
+                            : () => Navigator.push(context,
+                                MaterialPageRoute(builder: (_) =>
+                                    AddTransactionScreen(existing: t))),
+                        onDelete: _selecting ? null : () {
+                          p.deleteTransaction(t.id);
+                          showUndoSnackbar(context, p, 'Deleted "${t.title}"');
+                        },
+                      ),
+                    )).toList(),
+                  );
+                }),
 
                 // Upcoming reminders
                 if (!_selecting && p.upcomingReminders.isNotEmpty) ...[
@@ -507,11 +598,15 @@ class _WeekChart extends StatelessWidget {
             return BarChartGroupData(x: e.key, barRods: [
               BarChartRodData(
                 toY: e.value.value,
-                gradient: isToday ? AppTheme.accentGrad
-                    : LinearGradient(colors: [
-                        AppTheme.accent.withOpacity(0.5),
-                        AppTheme.accent.withOpacity(0.25),
-                      ], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                gradient: isToday
+                    ? AppTheme.primaryGrad
+                    : LinearGradient(
+                        colors: [
+                          AppTheme.teal.withOpacity(0.4),
+                          AppTheme.teal.withOpacity(0.2),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter),
                 width: 22,
                 borderRadius: BorderRadius.circular(6),
               ),
@@ -579,4 +674,181 @@ class _SearchSheetState extends State<_SearchSheet> {
       ),
     );
   }
+}
+
+// ── Filter summary card ───────────────────────────────────────────────────────
+class _FilterSummaryCard extends StatelessWidget {
+  final String currency;
+  final double totalExpense, totalIncome, net;
+  final int count;
+
+  const _FilterSummaryCard({
+    required this.currency,
+    required this.totalExpense,
+    required this.totalIncome,
+    required this.net,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat('#,##0.00');
+    final netPositive = net >= 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.borderColor),
+        boxShadow: context.isDark
+            ? null
+            : [BoxShadow(color: Colors.black.withOpacity(0.06),
+                  blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.teal.withOpacity(0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              border: Border(
+                  bottom: BorderSide(color: context.borderColor)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.summarize_outlined, size: 14, color: AppTheme.teal),
+              const SizedBox(width: 6),
+              Text('Filter Summary',
+                  style: const TextStyle(
+                      color: AppTheme.teal,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.teal.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count transaction${count == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                      color: AppTheme.teal, fontSize: 11,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+            ]),
+          ),
+
+          // Stats row
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              // Expense
+              Expanded(child: _stat(
+                context,
+                Icons.arrow_upward_rounded,
+                'Expense',
+                '$currency${fmt.format(totalExpense)}',
+                AppTheme.red,
+              )),
+              _divider(context),
+              // Income
+              Expanded(child: _stat(
+                context,
+                Icons.arrow_downward_rounded,
+                'Income',
+                '$currency${fmt.format(totalIncome)}',
+                AppTheme.green,
+              )),
+              _divider(context),
+              // Net
+              Expanded(child: _stat(
+                context,
+                netPositive
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded,
+                'Net',
+                '${netPositive ? '+' : ''}$currency${fmt.format(net.abs())}',
+                netPositive ? AppTheme.green : AppTheme.red,
+              )),
+            ]),
+          ),
+
+          // Progress bar — expense vs income ratio
+          if (totalExpense > 0 || totalIncome > 0) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Spent of earned',
+                          style: TextStyle(
+                              color: context.mutedColor, fontSize: 10)),
+                      Text(
+                        totalIncome > 0
+                            ? '${((totalExpense / totalIncome) * 100).clamp(0, 999).toStringAsFixed(0)}%'
+                            : '—',
+                        style: TextStyle(
+                            color: context.mutedColor, fontSize: 10,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: totalIncome > 0
+                          ? (totalExpense / totalIncome).clamp(0.0, 1.0)
+                          : 1.0,
+                      backgroundColor: AppTheme.green.withOpacity(0.15),
+                      valueColor: AlwaysStoppedAnimation(
+                          totalExpense > totalIncome
+                              ? AppTheme.red
+                              : AppTheme.teal),
+                      minHeight: 5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(BuildContext context, IconData icon, String label,
+      String value, Color color) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 3),
+            Text(label,
+                style: TextStyle(
+                    color: context.mutedColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500)),
+          ]),
+          const SizedBox(height: 4),
+          Text(value,
+              style: TextStyle(
+                  color: color, fontSize: 14, fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis),
+        ],
+      );
+
+  Widget _divider(BuildContext context) => Container(
+        width: 1, height: 40,
+        color: context.borderColor,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+      );
 }

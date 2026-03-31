@@ -184,11 +184,11 @@ class _LineChart extends StatelessWidget {
         LineChartBarData(
           spots: spots,
           isCurved: true,
-          gradient: AppTheme.accentGrad,
+          gradient: AppTheme.primaryGrad,
           barWidth: 3,
           dotData: const FlDotData(show: false),
           belowBarData: BarAreaData(show: true, gradient: LinearGradient(
-            colors: [AppTheme.accent.withOpacity(0.3), AppTheme.accent.withOpacity(0.0)],
+            colors: [AppTheme.teal.withOpacity(0.18), Colors.transparent],
             begin: Alignment.topCenter, end: Alignment.bottomCenter,
           )),
         ),

@@ -59,7 +59,10 @@ class SettingsScreen extends StatelessWidget {
 
           // Auto-save path info
           GlassCard(
-            gradient: LinearGradient(colors: [AppTheme.green.withOpacity(0.08), AppTheme.card]),
+            gradient: LinearGradient(colors: [
+              AppTheme.incomeCardBg(context.isDark),
+              AppTheme.incomeCardBg(context.isDark),
+            ]),
             child: Row(children: [
               const Icon(Icons.folder_outlined, color: AppTheme.green, size: 18),
               const SizedBox(width: 10),

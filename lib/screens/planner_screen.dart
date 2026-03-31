@@ -229,8 +229,8 @@ class _TransactionCard extends StatelessWidget {
     return GlassCard(
       gradient: isHidden
           ? LinearGradient(colors: [
-              AppTheme.accentLight.withOpacity(0.08),
-              AppTheme.card,
+              AppTheme.pathCardBg(context.isDark),
+              AppTheme.pathCardBg(context.isDark),
             ])
           : null,
       padding: const EdgeInsets.all(12),
@@ -303,7 +303,8 @@ class _ReminderCard extends StatelessWidget {
     final isPast = reminder.dateTime.isBefore(DateTime.now());
     return GlassCard(
       gradient: LinearGradient(colors: [
-        AppTheme.yellow.withOpacity(0.08), AppTheme.card,
+        AppTheme.yellow.withOpacity(0.07),
+        AppTheme.yellow.withOpacity(0.07),
       ]),
       padding: const EdgeInsets.all(12),
       child: Row(children: [

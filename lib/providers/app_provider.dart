@@ -352,6 +352,74 @@ class AppProvider extends ChangeNotifier {
     });
   }
 
+
+  // ── Filter helpers ────────────────────────────────────────────────────────
+
+  /// Filter public transactions by date and/or category/type
+  List<Transaction> filterTransactions({
+    DateTime? date,          // exact day
+    DateTime? from,          // range start
+    DateTime? to,            // range end (inclusive)
+    TransactionCategory? category,
+    TransactionType? type,
+    String? query,
+  }) {
+    return publicTransactions.where((t) {
+      if (date != null) {
+        if (t.dateTime.year != date.year ||
+            t.dateTime.month != date.month ||
+            t.dateTime.day != date.day) return false;
+      }
+      if (from != null && t.dateTime.isBefore(
+              DateTime(from.year, from.month, from.day))) return false;
+      if (to != null && t.dateTime.isAfter(
+              DateTime(to.year, to.month, to.day, 23, 59, 59))) return false;
+      if (category != null && t.category != category) return false;
+      if (type != null && t.type != type) return false;
+      if (query != null && query.isNotEmpty) {
+        final q = query.toLowerCase();
+        if (!t.title.toLowerCase().contains(q) &&
+            !(t.note?.toLowerCase().contains(q) ?? false) &&
+            !(t.tag?.toLowerCase().contains(q) ?? false) &&
+            !t.category.label.toLowerCase().contains(q)) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  /// Same filter for hidden (vault) transactions — vault must be unlocked
+  List<Transaction> filterHiddenTransactions({
+    DateTime? date,
+    DateTime? from,
+    DateTime? to,
+    TransactionCategory? category,
+    TransactionType? type,
+    String? query,
+  }) {
+    if (!_vaultUnlocked) return [];
+    return hiddenTransactions.where((t) {
+      if (date != null) {
+        if (t.dateTime.year != date.year ||
+            t.dateTime.month != date.month ||
+            t.dateTime.day != date.day) return false;
+      }
+      if (from != null && t.dateTime.isBefore(
+              DateTime(from.year, from.month, from.day))) return false;
+      if (to != null && t.dateTime.isAfter(
+              DateTime(to.year, to.month, to.day, 23, 59, 59))) return false;
+      if (category != null && t.category != category) return false;
+      if (type != null && t.type != type) return false;
+      if (query != null && query.isNotEmpty) {
+        final q = query.toLowerCase();
+        if (!t.title.toLowerCase().contains(q) &&
+            !(t.note?.toLowerCase().contains(q) ?? false) &&
+            !(t.tag?.toLowerCase().contains(q) ?? false) &&
+            !t.category.label.toLowerCase().contains(q)) return false;
+      }
+      return true;
+    }).toList();
+  }
+
   /// Public-only search — hidden entries never appear here
   List<Transaction> searchTransactions(String query) {
     final q = query.toLowerCase();

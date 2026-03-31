@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../providers/app_provider.dart';
 import '../utils/theme.dart';
 import '../widgets/widgets.dart';
+import '../widgets/filter_sheet.dart';
 import '../models/models.dart';
 import 'add_transaction.dart';
 
@@ -81,11 +83,11 @@ class _LockScreen extends StatelessWidget {
                   Container(
                     width: 90, height: 90,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.accentGrad,
+                      gradient: AppTheme.primaryGrad,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: AppTheme.accent.withOpacity(0.4),
-                            blurRadius: 30, spreadRadius: 5),
+                        BoxShadow(color: AppTheme.teal.withOpacity(0.35),
+                            blurRadius: 24, spreadRadius: 4),
                       ],
                     ),
                     child: const Icon(Icons.lock_outline, size: 42, color: Colors.white),
@@ -153,11 +155,22 @@ class _VaultContent extends StatefulWidget {
 
 class _VaultContentState extends State<_VaultContent> {
   final Set<String> _selected = {};
+  TransactionFilter _filter = const TransactionFilter();
   bool get _selecting => _selected.isNotEmpty;
 
   void _toggleSelect(String id) => setState(() {
     if (_selected.contains(id)) _selected.remove(id); else _selected.add(id);
   });
+
+  Future<void> _openVaultFilter(BuildContext context) async {
+    final result = await showModalBottomSheet<TransactionFilter>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FilterSheet(current: _filter, isVault: true),
+    );
+    if (result != null) setState(() => _filter = result);
+  }
 
   void _deleteSelected() {
     final count = _selected.length;
@@ -212,6 +225,10 @@ class _VaultContentState extends State<_VaultContent> {
                   ),
                 ]
               : [
+                  FilterButton(
+                    filter: _filter,
+                    onTap: () => _openVaultFilter(context),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.search_outlined,
                         color: AppTheme.textSecondary),
@@ -276,50 +293,117 @@ class _VaultContentState extends State<_VaultContent> {
             ),
           ),
           const SizedBox(height: 16),
+          // Active filter bar
+          if (_filter.isActive && !_selecting)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: ActiveFilterBar(
+                filter: _filter,
+                onClear: () => setState(() => _filter = const TransactionFilter()),
+              ),
+            ),
+          // Filter summary — totals for the filtered hidden entries
+          if (_filter.isActive && !_selecting)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Builder(builder: (ctx) {
+                final filtered = p.filterHiddenTransactions(
+                  date: _filter.date, from: _filter.from, to: _filter.to,
+                  category: _filter.category, type: _filter.type,
+                );
+                final totalExpense = filtered
+                    .where((t) => t.type == TransactionType.expense)
+                    .fold(0.0, (s, t) => s + t.amount);
+                final totalIncome = filtered
+                    .where((t) => t.type == TransactionType.income)
+                    .fold(0.0, (s, t) => s + t.amount);
+                final net = totalIncome - totalExpense;
+                if (filtered.isEmpty) return const SizedBox.shrink();
+                return _VaultFilterSummary(
+                  currency: cur,
+                  totalExpense: totalExpense,
+                  totalIncome: totalIncome,
+                  net: net,
+                  count: filtered.length,
+                );
+              }),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
-              const Text('Hidden Entries',
-                  style: TextStyle(color: AppTheme.textPrimary,
-                      fontSize: 16, fontWeight: FontWeight.w700)),
+              Text(
+                _filter.isActive ? 'Filtered Results' : 'Hidden Entries',
+                style: TextStyle(color: context.textColor,
+                    fontSize: 16, fontWeight: FontWeight.w700),
+              ),
               const Spacer(),
-              if (!_selecting && hidden.isNotEmpty)
+              if (_filter.isActive)
+                Builder(builder: (ctx) {
+                  final count = p.filterHiddenTransactions(
+                    date: _filter.date, from: _filter.from, to: _filter.to,
+                    category: _filter.category, type: _filter.type,
+                  ).length;
+                  return Text('$count found',
+                      style: const TextStyle(
+                          color: AppTheme.teal, fontSize: 12,
+                          fontWeight: FontWeight.w500));
+                })
+              else if (!_selecting && hidden.isNotEmpty)
                 Text('Long-press to select',
-                    style: TextStyle(color: AppTheme.textSecondary.withOpacity(0.6),
+                    style: TextStyle(
+                        color: context.mutedColor.withOpacity(0.6),
                         fontSize: 11)),
             ]),
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: hidden.isEmpty
-                ? const EmptyState(
-                    icon: Icons.visibility_off_outlined,
-                    message: 'No hidden entries',
-                    subtitle: 'Tap the button below to add a secret expense')
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                    itemCount: hidden.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (ctx, i) => TransactionTile(
-                      transaction: hidden[i],
-                      currency: cur,
-                      selectable: _selecting,
-                      selected: _selected.contains(hidden[i].id),
-                      onSelect: () => _toggleSelect(hidden[i].id),
-                      onTap: _selecting
-                          ? () => _toggleSelect(hidden[i].id)
-                          : () => Navigator.push(ctx,
-                              MaterialPageRoute(builder: (_) =>
-                                  AddTransactionScreen(existing: hidden[i]))),
-                      onDelete: _selecting
-                          ? null
-                          : () {
-                              p.deleteTransaction(hidden[i].id);
-                              showUndoSnackbar(context, p,
-                                  'Deleted "${hidden[i].title}"');
-                            },
-                    ),
-                  ),
+            child: Builder(builder: (ctx) {
+              final list = _filter.isActive
+                  ? p.filterHiddenTransactions(
+                      date: _filter.date, from: _filter.from, to: _filter.to,
+                      category: _filter.category, type: _filter.type,
+                    )
+                  : hidden;
+
+              if (list.isEmpty) {
+                return EmptyState(
+                  icon: _filter.isActive
+                      ? Icons.filter_alt_off_outlined
+                      : Icons.visibility_off_outlined,
+                  message: _filter.isActive
+                      ? 'No results for this filter'
+                      : 'No hidden entries',
+                  subtitle: _filter.isActive
+                      ? 'Try a different date or category'
+                      : 'Tap the button below to add a secret expense',
+                );
+              }
+
+              return ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (listCtx, i) => TransactionTile(
+                  transaction: list[i],
+                  currency: cur,
+                  selectable: _selecting,
+                  selected: _selected.contains(list[i].id),
+                  onSelect: () => _toggleSelect(list[i].id),
+                  onTap: _selecting
+                      ? () => _toggleSelect(list[i].id)
+                      : () => Navigator.push(listCtx,
+                          MaterialPageRoute(builder: (_) =>
+                              AddTransactionScreen(existing: list[i]))),
+                  onDelete: _selecting
+                      ? null
+                      : () {
+                          p.deleteTransaction(list[i].id);
+                          showUndoSnackbar(context, p,
+                              'Deleted "${list[i].title}"');
+                        },
+                ),
+              );
+            }),
           ),
         ]),
         bottomNavigationBar: _selecting
@@ -445,8 +529,8 @@ class _VaultSearchSheetState extends State<_VaultSearchSheet> {
                             final isIncome = t.type == TransactionType.income;
                             return GlassCard(
                               gradient: LinearGradient(colors: [
-                                AppTheme.accentLight.withOpacity(0.07),
-                                AppTheme.card,
+                                AppTheme.pathCardBg(context.isDark),
+                                AppTheme.pathCardBg(context.isDark),
                               ]),
                               onTap: () {
                                 Navigator.pop(context);
@@ -512,4 +596,115 @@ class _VaultSearchSheetState extends State<_VaultSearchSheet> {
       ),
     );
   }
+}
+
+// ── Vault filter summary card ─────────────────────────────────────────────────
+class _VaultFilterSummary extends StatelessWidget {
+  final String currency;
+  final double totalExpense, totalIncome, net;
+  final int count;
+
+  const _VaultFilterSummary({
+    required this.currency,
+    required this.totalExpense,
+    required this.totalIncome,
+    required this.net,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat('#,##0.00');
+    final netPositive = net >= 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.teal.withOpacity(0.2)),
+      ),
+      child: Column(children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: AppTheme.teal.withOpacity(0.08),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            border: Border(
+                bottom: BorderSide(color: AppTheme.teal.withOpacity(0.15))),
+          ),
+          child: Row(children: [
+            const Icon(Icons.lock_outline, size: 12, color: AppTheme.teal),
+            const SizedBox(width: 6),
+            const Text('Vault Filter Summary',
+                style: TextStyle(color: AppTheme.teal, fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                  color: AppTheme.teal.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10)),
+              child: Text('$count entr${count == 1 ? 'y' : 'ies'}',
+                  style: const TextStyle(color: AppTheme.teal, fontSize: 11,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ]),
+        ),
+        // Stats
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            _stat(Icons.arrow_upward_rounded, 'Expense',
+                '$currency${fmt.format(totalExpense)}', AppTheme.red),
+            _vdivider(),
+            _stat(Icons.arrow_downward_rounded, 'Income',
+                '$currency${fmt.format(totalIncome)}', AppTheme.green),
+            _vdivider(),
+            _stat(
+              netPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+              'Net',
+              '${netPositive ? '+' : ''}$currency${fmt.format(net.abs())}',
+              netPositive ? AppTheme.green : AppTheme.red,
+            ),
+          ]),
+        ),
+        if (totalExpense > 0 || totalIncome > 0)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: totalIncome > 0
+                    ? (totalExpense / totalIncome).clamp(0.0, 1.0)
+                    : 1.0,
+                backgroundColor: AppTheme.green.withOpacity(0.15),
+                valueColor: AlwaysStoppedAnimation(
+                    totalExpense > totalIncome ? AppTheme.red : AppTheme.teal),
+                minHeight: 5,
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  Widget _stat(IconData icon, String label, String value, Color color) =>
+      Expanded(child: Column(children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(label, style: const TextStyle(
+              color: AppTheme.textSecondary, fontSize: 10)),
+        ]),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(
+            color: color, fontSize: 13, fontWeight: FontWeight.w700),
+            overflow: TextOverflow.ellipsis),
+      ]));
+
+  Widget _vdivider() => Container(
+      width: 1, height: 36,
+      color: AppTheme.border,
+      margin: const EdgeInsets.symmetric(horizontal: 4));
 }
