@@ -318,7 +318,7 @@ class _FilterSheetState extends State<FilterSheet> {
                           : null); // "This week" = range
                   final isWeek = q.$2 == -7;
                   final isSelected = isWeek
-                      ? (_from != null && _to == null == false &&
+                      ? (_from != null && _to != null &&
                           _from!.isAfter(now.subtract(const Duration(days: 8))))
                       : (_date != null &&
                           _date!.day == qDate!.day &&
